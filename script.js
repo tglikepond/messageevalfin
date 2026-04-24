@@ -252,6 +252,21 @@ function openModal(type) {
       body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">AI 평가가 실행되지 않았습니다.</p>';
     } else {
       const aiPct = Math.round(Object.values(c.aiScores).reduce((a,b)=>a+b,0)/(aiEvalItems.length*10)*100);
+      // Clean the saved report from any JSON/code artifacts
+      let cleanReport = '';
+      if (c.aiReport) {
+        cleanReport = c.aiReport
+          .replace(/```[\w]*[\s\S]*?```/g, '')
+          .replace(/\{"subject"[\s\S]*?\}/g, '')
+          .replace(/\["[^"]*"(?:,"[^"]*")*\]/g, '')
+          .replace(/\*\*첫 번째 JSON 블록\*\*[^<]*/g, '')
+          .replace(/\*\*두 번째 JSON 블록\*\*[^<]*/g, '')
+          .replace(/\*\*세 번째 JSON 블록\*\*[^<]*/g, '')
+          .replace(/<code[^>]*>\s*\{[^<]*\}\s*<\/code>/g, '')
+          .replace(/(<br\s*\/?>){4,}/g, '<br><br>')
+          .replace(/(<\/div>\s*<div[^>]*>){3,}/g, '</div><div style="margin:8px 0;">')
+          .trim();
+      }
       body.innerHTML = `
         <h4 style="margin-bottom:12px;">📊 AI 종합 점수: <span style="color:var(--accent-purple)">${aiPct}점</span> / 100점</h4>
         <table class="result-table"><thead><tr><th>No.</th><th>항목</th><th>AI 점수</th><th>등급</th><th>AI 개선사항</th></tr></thead><tbody>
@@ -265,9 +280,9 @@ function openModal(type) {
               <td style="font-size:12px;color:var(--text-secondary);max-width:200px;">${improvement}</td></tr>`;
           }).join('')}
         </tbody></table>
-        ${c.aiReport ? `<div style="margin-top:20px;padding:16px;background:rgba(15,23,42,0.5);border-radius:var(--radius-md);border:1px solid var(--border-glass);">
+        ${cleanReport ? `<div style="margin-top:20px;padding:16px;background:rgba(15,23,42,0.5);border-radius:var(--radius-md);border:1px solid var(--border-glass);">
           <h4 style="margin-bottom:8px;">📋 AI 분석 리포트 전문</h4>
-          <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">${c.aiReport}</div></div>` : ''}`;
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">${cleanReport}</div></div>` : ''}`;
     }
   } else if (type === 'feedback') {
     const fb = c.feedback; title.textContent = '⭐ 고객 피드백 세부 내용';
@@ -839,8 +854,26 @@ async function runAiEvaluation(){
 }
 
 function renderAiReportContent(rawText) {
-  const cleanText = rawText.replace(/```json[\s\S]*?```\n?/g, '');
+  // 1. Remove ALL code blocks (```json ... ```, ``` ... ```, etc.)
+  let cleanText = rawText.replace(/```[\w]*\s*\n?[\s\S]*?\n?\s*```/g, '');
+  
+  // 2. Remove stray JSON objects/arrays that might remain
+  cleanText = cleanText.replace(/^\s*\{["\w:,\s\d{}\[\].-]+\}\s*$/gm, '');
+  cleanText = cleanText.replace(/^\s*\[["'\w,\s.가-힣]+\]\s*$/gm, '');
+  
+  // 3. Remove prompt leakage patterns
+  cleanText = cleanText.replace(/^\*\*첫 번째 JSON 블록\*\*.*$/gm, '');
+  cleanText = cleanText.replace(/^\*\*두 번째 JSON 블록\*\*.*$/gm, '');
+  cleanText = cleanText.replace(/^\*\*세 번째 JSON 블록\*\*.*$/gm, '');
+  cleanText = cleanText.replace(/^## 출력 형식.*[\s\S]*?(?=^##\s|$)/gm, '');
+  
+  // 4. Remove excessive blank lines
+  cleanText = cleanText.replace(/\n{4,}/g, '\n\n\n');
+  
+  // 5. Convert to HTML
   let html = markdownToHtml(cleanText);
+  
+  // 6. Prepend score summary grid if scores exist
   const hasScores = Object.keys(aiScores).length > 0;
   if (hasScores) {
     let summaryHtml = `<div style="margin-bottom:24px;padding:16px;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15);border-radius:var(--radius-md);">`;
@@ -884,4 +917,51 @@ function renderAiScoreGrid(){
   }).join('')+`<div class="ai-score-item" style="border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.06);"><div class="score-num" style="font-size:28px;color:var(--accent-purple);">${aiPct}</div><div class="score-info"><div class="score-name" style="font-size:14px;font-weight:700;">종합 /100</div></div></div>`;
 }
 
-function markdownToHtml(md){return '<p>'+md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/^# (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/`(.+?)`/g,'<code style="background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;font-size:13px;">$1</code>').replace(/^- (.+)$/gm,'<li>$1</li>').replace(/^(\d+)\. (.+)$/gm,'<li>$2</li>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')+'</p>';}
+function markdownToHtml(md) {
+  // Escape HTML entities first
+  let html = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  
+  // Handle markdown tables: | col | col | col |
+  html = html.replace(/(?:^(\|.+\|)\s*\n(\|[-| :]+\|)\s*\n((?:\|.+\|\s*\n?)+))/gm, function(match, header, separator, bodyRows) {
+    const headerCells = header.split('|').filter(c => c.trim()).map(c => `<th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;border-bottom:2px solid var(--border-glass);">${c.trim()}</th>`).join('');
+    const rows = bodyRows.trim().split('\n').map(row => {
+      const cells = row.split('|').filter(c => c.trim()).map(c => `<td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--border-glass);">${c.trim()}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<table style="width:100%;border-collapse:collapse;margin:12px 0;background:rgba(15,23,42,0.3);border-radius:8px;overflow:hidden;"><thead><tr>${headerCells}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+  
+  // Headers
+  html = html.replace(/^#### (.+)$/gm, '<h5 style="margin:16px 0 8px;font-size:14px;color:var(--text-primary);">$1</h5>');
+  html = html.replace(/^### (.+)$/gm, '<h4 style="margin:20px 0 10px;font-size:15px;color:var(--text-primary);border-bottom:1px solid var(--border-glass);padding-bottom:8px;">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 style="margin:24px 0 12px;font-size:17px;color:var(--accent-purple);">$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h3 style="margin:24px 0 12px;font-size:18px;color:var(--accent-purple);">$1</h3>');
+  
+  // Bold and italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  // Inline code
+  html = html.replace(/`(.+?)`/g, '<code style="background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;font-size:12px;">$1</code>');
+  
+  // Quoted text "..." highlight
+  html = html.replace(/"([^"]{2,80})"/g, '<span style="color:var(--accent-blue);font-weight:600;">"$1"</span>');
+  
+  // List items
+  html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0;padding:4px 0;"><span style="color:var(--accent-purple);font-weight:700;min-width:20px;">$1.</span><span>$2</span></div>');
+  html = html.replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;padding-left:8px;"><span style="color:var(--accent-purple);">•</span><span>$1</span></div>');
+  html = html.replace(/^\s{2,}[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:2px 0;padding-left:24px;"><span style="color:var(--text-muted);">◦</span><span style="font-size:12px;">$1</span></div>');
+  
+  // Paragraph breaks
+  html = html.replace(/\n\n+/g, '</div><div style="margin:8px 0;">');
+  html = html.replace(/\n/g, '<br>');
+  
+  // Wrap in container
+  html = '<div style="margin:8px 0;">' + html + '</div>';
+  
+  // Clean empty divs
+  html = html.replace(/<div style="margin:8px 0;">\s*<\/div>/g, '');
+  
+  return html;
+}
+
