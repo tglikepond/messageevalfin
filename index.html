@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="메시지 성과 평가 대시보드 - AI 분석 · 고객 피드백 통합 CRM 도구">
+  <title>메시지 성과 평가 대시보드 v4</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#3b82f6" />
+        <stop offset="100%" stop-color="#8b5cf6" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-icon">M</div>
+      <div>
+        <h1>메시지 성과 평가 대시보드</h1>
+        <div class="header-subtitle">캠페인 정보 입력 · AI 분석 · 종합 결과</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="header-badge" id="savedCountBadge">📊 저장된 평가: 0건</span>
+    </div>
+  </header>
+
+  <!-- ===== Navigation ===== -->
+  <div class="nav-area">
+    <div style="display:flex;align-items:stretch;gap:0;">
+      <div style="flex:1;">
+        <div class="nav-section-label">📋 평가 프로세스</div>
+        <div class="nav-tabs">
+          <button class="nav-tab" data-tab="campaign"><span class="step-num">1</span> 캠페인 정보</button>
+          <button class="nav-tab" data-tab="results"><span class="step-num">2</span> 종합 결과</button>
+        </div>
+      </div>
+      <div class="nav-divider"></div>
+      <div>
+        <div class="nav-section-label">📊 대시보드</div>
+        <div class="nav-tabs">
+          <button class="nav-tab dashboard-tab active" data-tab="overview">📈 성과 개요</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main-content">
+
+    <!-- ========== STEP 1: 캠페인 정보 (통합) ========== -->
+    <div class="tab-panel" id="tab-campaign">
+
+      <!-- 캠페인 기본 정보 -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-cyan">📝</div>캠페인 기본 정보
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">캠페인명 <span style="color:var(--accent-rose)">*</span></label>
+            <input class="form-input" id="campaignName" placeholder="예: 봄맞이 스킨케어 프로모션">
+          </div>
+          <div class="form-group"><label class="form-label">발송 채널</label>
+            <select class="form-select" id="sendChannel">
+              <option value="">채널 선택</option>
+              <option value="SMS/MMS">SMS / MMS</option>
+              <option value="앱 푸시">앱 푸시 알림</option>
+              <option value="이메일">이메일</option>
+              <option value="카카오톡">카카오 알림톡/친구톡</option>
+              <option value="RCS">RCS</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">📅 발송 일자</label>
+            <div class="date-picker-wrap">
+              <input class="form-input date-input" type="date" id="sendDate">
+              <span class="date-icon">📅</span>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">⏰ 발송 시간</label>
+            <div class="date-picker-wrap">
+              <input class="form-input date-input" type="time" id="sendTime" step="60">
+              <span class="date-icon">⏰</span>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">👥 발송 인원</label>
+            <input class="form-input" type="number" id="sendRecipients" placeholder="예: 15000" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">타겟 세그먼트</label>
+            <input class="form-input" id="targetSegment" placeholder="예: VIP 고객, 휴면 고객 등">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">실제 오픈율 (%)</label>
+            <input class="form-input" type="number" id="actualOpenRate" placeholder="예: 32.5" min="0" max="100" step="0.1">
+          </div>
+          <div class="form-group"><label class="form-label">실제 전환율 (%)</label>
+            <input class="form-input" type="number" id="actualConvertRate" placeholder="예: 8.7" min="0" max="100" step="0.1">
+          </div>
+        </div>
+      </div>
+
+      <!-- 메시지 내용 (AI 분석용) -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-purple">✉️</div>메시지 내용
+          </div>
+          <span class="section-badge">AI 분석 대상</span>
+        </div>
+
+        <div class="form-group" id="apiKeySection">
+          <div id="apiKeyMsg"
+            style="padding:12px 16px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:var(--radius-md);margin-bottom:8px;">
+            <span style="font-size:13px;color:var(--accent-purple);font-weight:600;">🔑 Gemini API 키</span>
+            <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:8px;">API 키는 브라우저(localStorage)에만 저장되며, 소스코드에 포함되지 않아 안전합니다.</p>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input class="form-input" id="localApiKey" type="password" placeholder="Gemini API Key 입력 (AIza...)"
+                style="flex:1;font-size:13px;">
+              <button type="button" onclick="toggleLocalKeyVisibility()" class="btn btn-secondary"
+                style="padding:6px 12px;font-size:12px;white-space:nowrap;" id="toggleKeyBtn">👁 보기</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <p style="font-size:11px;color:var(--text-muted);margin:0;">
+                💡 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-blue);">Google AI Studio</a>에서 무료 API 키를 발급받을 수 있습니다.
+              </p>
+              <span id="apiKeyStatus" style="font-size:11px;color:var(--text-muted);"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group"><label class="form-label">메시지 이미지 (선택)</label>
+          <div class="ai-upload-area" id="aiUploadArea" onclick="document.getElementById('aiFileInput').click()">
+            <div id="aiUploadPlaceholder">
+              <div class="ai-upload-icon">🖼️</div>
+              <div class="ai-upload-text">이미지를 클릭하거나 드래그하여 업로드</div>
+              <div class="ai-upload-hint">PNG, JPG, WEBP (최대 10MB)</div>
+            </div>
+            <div id="aiPreviewContainer" style="display:none;"><img id="aiPreviewImg" class="ai-preview-img"
+                alt="미리보기"><button class="ai-remove-img" onclick="event.stopPropagation();removeAiImage()">✕</button>
+            </div>
+          </div>
+          <input type="file" id="aiFileInput" accept="image/*" style="display:none"
+            onchange="handleAiImageUpload(event)">
+        </div>
+        <div class="form-group"><label class="form-label">메시지 제목</label>
+          <input class="form-input" id="aiMsgTitle" placeholder="예: [한정특가] 봄맞이 전 제품 30% 할인!">
+        </div>
+        <div class="form-group"><label class="form-label">메시지 본문 <span
+              style="color:var(--accent-rose)">*</span></label>
+          <textarea class="form-textarea" id="aiMsgBody" style="min-height:150px;"
+            placeholder="평가할 메시지 전체 내용을 붙여넣기 하세요..."></textarea>
+        </div>
+        <div class="form-group"><label class="form-label">타겟 고객 설명 (선택)</label>
+          <input class="form-input" id="aiTarget" placeholder="예: 30대 여성, VIP 고객">
+        </div>
+      </div>
+
+      <!-- 고객 피드백 -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-amber">⭐</div>고객 피드백 (선택)
+          </div>
+          <span class="section-badge">수집된 피드백 입력</span>
+        </div>
+        <div style="max-width:700px;">
+          <div class="form-group"><label class="form-label">고객 별점 (1~5점)</label>
+            <div class="feedback-stars" id="feedbackStars">
+              <button class="feedback-star" data-value="1">★</button><button class="feedback-star"
+                data-value="2">★</button>
+              <button class="feedback-star" data-value="3">★</button><button class="feedback-star"
+                data-value="4">★</button>
+              <button class="feedback-star" data-value="5">★</button>
+            </div>
+            <p style="color:var(--accent-amber);font-size:13px;font-weight:600;min-height:20px;margin-top:8px;"
+              id="starLabel">별점을 선택해 주세요</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">콘텐츠 관련성 (1~10)</label>
+              <div style="display:flex;align-items:center;gap:12px;"><input type="range" min="1" max="10" value="5"
+                  style="flex:1" id="fbRelevance" oninput="document.getElementById('fbRelVal').textContent=this.value">
+                <div class="slider-value" id="fbRelVal" style="font-size:20px;min-width:36px;text-align:center;">5</div>
+              </div>
+              <div class="slider-labels"><span>1 (관련 없음)</span><span>10 (매우 관련)</span></div>
+            </div>
+            <div class="form-group"><label class="form-label">재수신 의향 (1~10)</label>
+              <div style="display:flex;align-items:center;gap:12px;"><input type="range" min="1" max="10" value="5"
+                  style="flex:1" id="fbWillingness"
+                  oninput="document.getElementById('fbWillVal').textContent=this.value">
+                <div class="slider-value" id="fbWillVal" style="font-size:20px;min-width:36px;text-align:center;">5
+                </div>
+              </div>
+              <div class="slider-labels"><span>1 (받기 싫음)</span><span>10 (꼭 받고 싶음)</span></div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">피드백 수집 건수</label>
+            <input class="form-input" type="number" id="fbCount" placeholder="예: 150" min="0">
+          </div>
+          <div class="form-group"><label class="form-label">주요 고객 의견 / 메모</label>
+            <textarea class="form-textarea" id="fbComment" placeholder="수집한 고객 피드백 요약..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 분석 결과 영역 -->
+      <div class="section" id="aiResultSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-purple">🤖</div>AI 평가 결과
+          </div><span class="section-badge">Powered by Gemini</span>
+        </div>
+        <div id="aiScoreSummary" style="display:none;">
+          <div class="ai-score-grid" id="aiScoreGrid"></div>
+        </div>
+        <div id="aiResultArea">
+          <div class="ai-loading" id="aiLoading" style="display:none;">
+            <div class="ai-spinner"></div>
+            <div class="ai-loading-text">AI가 메시지를 분석하고 있습니다...</div>
+          </div>
+          <div class="ai-result-card" id="aiResultCard" style="display:none;">
+            <div class="ai-result-header"><span style="font-size:24px;">🤖</span>
+              <div><strong style="font-size:15px;">AI 평가 리포트</strong><br><span
+                  style="font-size:12px;color:var(--text-muted);" id="aiResultTime"></span></div>
+              <span class="ai-badge">AI Generated</span>
+            </div>
+            <div class="ai-result-content" id="aiResultContent"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 버튼 그룹 -->
+      <div class="btn-group">
+        <button class="btn btn-ai" id="aiRunBtn" onclick="runAiAndSave()">🤖 AI 분석 실행 및 저장</button>
+        <button class="btn btn-primary" onclick="saveAndShowResult()">📊 저장 후 종합 결과 보기</button>
+      </div>
+    </div>
+
+    <!-- ========== STEP 2: 종합 결과 ========== -->
+    <div class="tab-panel" id="tab-results">
+
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-cyan">🔎</div>평가 캠페인 선택
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:2"><select class="form-select" id="resultCampaignSelect"
+              onchange="loadCampaignResult()">
+              <option value="">캠페인을 선택하세요</option>
+            </select></div>
+          <div class="form-group" style="flex:0"><button class="btn btn-secondary" onclick="deleteCampaign()"
+              style="white-space:nowrap;">🗑 삭제</button></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-purple">🏆</div>종합 평가 점수
+          </div>
+        </div>
+        <div class="score-display">
+          <div class="score-circle"><svg viewBox="0 0 100 100">
+              <circle class="bg" cx="50" cy="50" r="45" />
+              <circle class="fill" cx="50" cy="50" r="45" stroke-dashoffset="283" id="scoreRing" />
+            </svg>
+            <div class="score-number" id="scoreNum">—</div>
+            <div class="score-label">종합</div>
+          </div>
+          <div class="score-details">
+            <h3 id="scoreGrade">캠페인을 선택해 주세요</h3>
+            <p id="scoreComment">위 선택박스에서 캠페인을 선택하세요.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 요약 카드 -->
+      <div id="resultSummarySection" style="display:none;">
+        <div class="comparison-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+          <div class="comparison-card" style="position:relative;">
+            <h4>📝 캠페인 정보</h4>
+            <div id="resultCampaignSummary" style="font-size:13px;color:var(--text-secondary);line-height:1.8;"></div>
+          </div>
+          <div class="comparison-card" style="position:relative;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h4>🤖 AI 평가</h4>
+              <button class="detail-btn ai" style="padding:5px 12px;font-size:11px;" onclick="openModal('ai')">🔍 세부
+                보기</button>
+            </div>
+            <div id="resultAiSummary"
+              style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin-top:8px;"></div>
+          </div>
+          <div class="comparison-card" style="position:relative;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h4>⭐ 고객 피드백</h4>
+              <button class="detail-btn feedback" style="padding:5px 12px;font-size:11px;"
+                onclick="openModal('feedback')">🔍 세부 보기</button>
+            </div>
+            <div id="resultFbSummary"
+              style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-blue">📋</div>AI 항목별 평가 (10항목)
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>평가 항목</th>
+                <th>AI 점수</th>
+                <th>등급</th>
+                <th>개선사항</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody">
+              <tr>
+                <td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">캠페인을 선택해 주세요.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-emerald">💡</div>개선 권장사항
+          </div>
+        </div>
+        <div id="recommendations">
+          <p style="color:var(--text-muted);text-align:center;padding:20px;">캠페인을 선택하면 표시됩니다.</p>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="exportReport()">📥 리포트 내보내기</button>
+        <button class="btn btn-primary" onclick="startNewEval()">➕ 새 평가 시작</button>
+      </div>
+    </div>
+
+    <!-- ========== 성과 개요 (대시보드) ========== -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="dashboard-hero">
+        <h2>📊 전체 성과 대시보드</h2>
+        <p>그동안 평가한 모든 캠페인의 종합 성과를 한눈에 확인합니다.</p>
+      </div>
+      <div class="stats-row" id="overviewStats">
+        <div class="stat-card">
+          <div class="stat-value blue" id="ovAvgOpen">—</div>
+          <div class="stat-label">평균 오픈율</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value emerald" id="ovAvgConvert">—</div>
+          <div class="stat-label">평균 전환율</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value amber" id="ovAvgScore">—</div>
+          <div class="stat-label">평균 종합 점수</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value purple" id="ovCampaignCount">0</div>
+          <div class="stat-label">총 평가 캠페인 수</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-blue">📊</div>캠페인별 오픈율 vs 전환율
+          </div>
+        </div>
+        <div class="chart-area">
+          <div class="bar-chart" id="barChart"></div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-dot blue"></div>오픈율
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot green"></div>전환율
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-amber">⭐</div>고객 피드백 종합
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value amber" id="ovAvgStar">—</div>
+            <div class="stat-label">평균 별점</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value blue" id="ovAvgRelevance">—</div>
+            <div class="stat-label">평균 관련성</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value emerald" id="ovAvgWilling">—</div>
+            <div class="stat-label">평균 재수신 의향</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value purple" id="ovFbCount">0</div>
+            <div class="stat-label">피드백 입력 수</div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-purple">📋</div>전체 평가 이력
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th>캠페인명</th>
+                <th>발송일</th>
+                <th>채널</th>
+                <th>오픈율</th>
+                <th>전환율</th>
+                <th>AI 점수</th>
+                <th>별점</th>
+                <th>종합</th>
+              </tr>
+            </thead>
+            <tbody id="overviewBody">
+              <tr>
+                <td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">아직 저장된 평가가 없습니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== Modal ===== -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalTitle">세부 내용</h3><button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span class="toast-icon">✅</span><span id="toastMsg">저장되었습니다.</span></div>
+  <script src="script.js"></script>
+</body>
+
+</html>
