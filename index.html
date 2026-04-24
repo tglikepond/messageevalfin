@@ -150,6 +150,28 @@
           <textarea class="form-textarea" id="aiMsgBody" style="min-height:150px;"
             placeholder="평가할 메시지 전체 내용을 붙여넣기 하세요..."></textarea>
         </div>
+
+        <!-- CTA 링크 입력 -->
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label class="form-label" style="margin-bottom:0;">🔗 CTA 링크 (버튼/링크)</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:var(--text-muted);" id="ctaCountLabel">1 / 4</span>
+              <button type="button" class="btn btn-secondary" onclick="addCtaLink()" id="addCtaBtn"
+                style="padding:4px 12px;font-size:12px;">+ 추가</button>
+              <button type="button" class="btn btn-secondary" onclick="removeCtaLink()" id="removeCtaBtn"
+                style="padding:4px 12px;font-size:12px;">− 삭제</button>
+            </div>
+          </div>
+          <div id="ctaLinksContainer">
+            <div class="cta-link-row" data-index="0" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+              <span style="font-size:12px;color:var(--accent-purple);font-weight:700;min-width:20px;">①</span>
+              <input class="form-input cta-btn-name" placeholder="버튼명 (예: 지금 구매하기)" style="flex:1;font-size:13px;">
+              <input class="form-input cta-link-url" placeholder="링크 URL (예: https://example.com/event)" style="flex:2;font-size:13px;">
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">메시지에 포함된 클릭 유도 버튼과 연결 링크를 입력하세요. 없으면 모두 삭제해도 됩니다.</p>
+        </div>
       </div>
 
       <!-- 고객 피드백 -->
