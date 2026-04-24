@@ -456,71 +456,201 @@ function buildAiPrompt(){
   const fbWillingness = document.getElementById('fbWillingness').value;
   const fbComment = document.getElementById('fbComment').value.trim();
 
-  let p=`당신은 CRM 마케팅 메시지 전문 분석가입니다. 아래 캠페인의 모든 정보를 종합적으로 분석하여 10가지 평가 항목에 따라 상세히 평가해 주세요.
+  // Build historical campaign data for comparison
+  const pastCampaigns = loadCampaigns().filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
+  let historySection = '';
+  if (pastCampaigns.length > 0) {
+    const recent = pastCampaigns.slice(-10); // last 10 campaigns
+    const avgOpen = (recent.reduce((a,c) => a + (c.openRate||0), 0) / recent.length).toFixed(1);
+    const avgConvert = (recent.reduce((a,c) => a + (c.convertRate||0), 0) / recent.length).toFixed(1);
+    const avgAiTotal = Math.round(recent.reduce((a,c) => {
+      const total = Object.values(c.aiScores).reduce((x,y)=>x+y,0);
+      return a + Math.round(total / (aiEvalItems.length * 10) * 100);
+    }, 0) / recent.length);
 
-## 📋 캠페인 기본 정보
+    // Per-item averages
+    const itemAvgs = {};
+    aiEvalItems.forEach(item => {
+      const scores = recent.map(c => c.aiScores[item.id]).filter(s => typeof s === 'number');
+      itemAvgs[item.id] = scores.length > 0 ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '-';
+    });
+
+    // Best & worst campaigns
+    const sorted = [...recent].sort((a,b) => (b.openRate||0) - (a.openRate||0));
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+
+    historySection = `\n## 📊 과거 캠페인 누적 데이터 (최근 ${recent.length}건 기준)
+**반드시 이 데이터와 비교하여 이번 캠페인의 상대적 위치를 평가하세요.**
+- 평균 오픈율: ${avgOpen}% | 평균 전환율: ${avgConvert}%
+- 평균 AI 종합 점수: ${avgAiTotal}점/100
+- 항목별 평균 점수:
+${aiEvalItems.map(it => `  - ${it.icon} ${it.title}: ${itemAvgs[it.id]}점`).join('\n')}
+- 가장 높은 오픈율 캠페인: "${best.name}" (오픈율 ${best.openRate}%, 전환율 ${best.convertRate}%)
+  - 메시지 요약: ${(best.msgBody||'').slice(0,80)}${(best.msgBody||'').length>80?'...':''}
+- 가장 낮은 오픈율 캠페인: "${worst.name}" (오픈율 ${worst.openRate}%, 전환율 ${worst.convertRate}%)
+  - 메시지 요약: ${(worst.msgBody||'').slice(0,80)}${(worst.msgBody||'').length>80?'...':''}
+
+**과거 캠페인과의 비교 분석 시 반드시 포함할 사항:**
+- 이번 캠페인의 오픈율/전환율이 평균 대비 높은지/낮은지 구체적 수치로 비교
+- 성과가 좋았던 캠페인과 이번 캠페인 메시지의 차이점 분석
+- 성과가 낮았던 캠페인과 유사한 패턴이 있는지 경고
+- 항목별로 과거 평균 대비 이번 캠페인의 강약점 비교
 `;
-  if(campaignName)p+=`- 캠페인명: ${campaignName}\n`;
-  if(sendDate)p+=`- 발송 일자: ${sendDate}\n`;
-  if(sendTime)p+=`- 발송 시간: ${sendTime}\n`;
-  if(sendRecipients)p+=`- 발송 인원: ${parseInt(sendRecipients).toLocaleString()}명\n`;
-  if(segment)p+=`- 타겟 세그먼트: ${segment}\n`;
-  if(openRate)p+=`- 실제 오픈율: ${openRate}%\n`;
-  if(convertRate)p+=`- 실제 전환율: ${convertRate}%\n`;
-
-  // Include feedback data in analysis
-  if(fbRating > 0) {
-    p+=`\n## ⭐ 고객 피드백 데이터\n`;
-    p+=`- 고객 별점: ${fbRating}/5\n`;
-    p+=`- 콘텐츠 관련성: ${fbRelevance}/10\n`;
-    p+=`- 재수신 의향: ${fbWillingness}/10\n`;
-    if(fbComment) p+=`- 고객 의견: ${fbComment}\n`;
   }
 
-  p+=`\n## ✉️ 메시지 내용\n`;
-  p+=`- 메시지 본문:\n\`\`\`\n${body}\n\`\`\`\n`;
-  if(aiImageBase64)p+=`\n(첨부 이미지도 함께 분석해 주세요)\n`;
-  p+=`
-## 분석 시 중요 지침
-- **캠페인 기본 정보**(발송 일자, 시간, 인원, 채널, 오픈율, 전환율 등)를 반드시 평가에 반영하세요.
-- **발송 시간 적합성** 항목: 실제 발송 시간 데이터를 기반으로 최적 시간대 대비 평가하세요.
-- **채널 적합성** 항목: 실제 사용된 채널과 메시지 특성의 적합도를 분석하세요.
-- **타겟 세그먼트 정확도** 항목: 타겟 고객 정보와 메시지 내용의 일치도를 평가하세요.
-- 실제 오픈율·전환율 데이터가 있는 경우, 이를 참고하여 분석의 근거로 활용하세요.
-${fbRating > 0 ? '- **고객 피드백 데이터**를 참고하여 실제 고객 반응과 메시지 품질 간의 관계를 분석하세요.\n' : ''}
-## 출력 형식 (반드시 이 형식을 정확히 지켜주세요)
+  let p = `# 역할 및 분석 원칙
 
-**첫 번째 JSON 블록** - 각 항목의 점수 (scores):
+당신은 10년 이상 경력의 CRM 마케팅 메시지 전문 분석가입니다.
+
+## ⚠️ 핵심 분석 원칙 (반드시 준수)
+1. **절대 일반론 금지**: "제목을 줄이세요", "CTA를 명확히 하세요" 같은 누구나 할 수 있는 일반적 조언은 금지합니다. 반드시 **이 메시지의 실제 문구를 인용**하며 구체적으로 분석하세요.
+2. **원문 인용 필수**: 각 항목 분석 시 메시지 본문에서 관련 문구를 직접 따옴표로 인용하고, 그 문구의 강점/약점을 분석하세요.
+3. **대안 제시 필수**: 개선 제안 시 "~하세요"가 아니라, 실제 대체 문구/표현을 구체적으로 작성하세요. 예: "현재 '전 제품 할인'을 '스킨케어 베스트 3종 40% OFF'로 변경"
+4. **데이터 근거 필수**: 오픈율/전환율 데이터가 있으면 반드시 수치를 인용하며 인과관계를 추론하세요.
+${pastCampaigns.length > 0 ? '5. **과거 비교 필수**: 아래 과거 캠페인 데이터와 반드시 비교 분석하세요. 평균 대비 각 항목의 수준을 구체적 수치로 제시하세요.\n' : ''}
+## 📋 이번 캠페인 정보
+`;
+
+  if(campaignName) p += `- 캠페인명: ${campaignName}\n`;
+  if(sendDate) p += `- 발송 일자: ${sendDate}\n`;
+  if(sendTime) p += `- 발송 시간: ${sendTime}\n`;
+  if(sendRecipients) p += `- 발송 인원: ${parseInt(sendRecipients).toLocaleString()}명\n`;
+  if(segment) p += `- 타겟 세그먼트: ${segment}\n`;
+  if(openRate) p += `- 실제 오픈율: ${openRate}%\n`;
+  if(convertRate) p += `- 실제 전환율: ${convertRate}%\n`;
+
+  // Feedback
+  if(fbRating > 0) {
+    p += `\n## ⭐ 고객 피드백 데이터\n`;
+    p += `- 고객 별점: ${fbRating}/5\n`;
+    p += `- 콘텐츠 관련성: ${fbRelevance}/10\n`;
+    p += `- 재수신 의향: ${fbWillingness}/10\n`;
+    if(fbComment) p += `- 고객 의견: ${fbComment}\n`;
+    p += `\n**피드백 분석 지침:** 고객 별점과 오픈율/전환율 간의 상관관계를 분석하세요. 관련성 점수가 낮다면 타겟팅 미스매치일 가능성을, 재수신 의향이 낮다면 콘텐츠 피로도를 추론하세요.\n`;
+  }
+
+  // Historical data
+  p += historySection;
+
+  // Message content
+  p += `\n## ✉️ 분석 대상 메시지 본문\n`;
+  p += `\`\`\`\n${body}\n\`\`\`\n`;
+  if(aiImageBase64) p += `\n(첨부 이미지도 함께 분석해 주세요)\n`;
+
+  // Analysis framework
+  p += `
+## 🔬 10가지 평가 항목별 분석 프레임워크
+
+각 항목을 아래 기준에 따라 **이 메시지에 특화**하여 분석하세요:
+
+### 1. ✍️ 제목(Subject) 매력도
+- 메시지 첫 줄 또는 제목 역할을 하는 부분을 식별하세요
+- 첫 15자 내에 핵심 혜택/호기심 요소가 있는지 분석
+- 이모지/특수문자 사용의 효과 판단
+- **구체적으로**: "현재 첫 줄 '___'에서 '___' 부분이 [강점/약점]" 형식으로 분석
+
+### 2. 📄 본문 콘텐츠 품질
+- 전체 메시지의 구조(도입-본문-마무리) 분석
+- 핵심 정보 전달 순서와 가독성 평가
+- 불필요한 반복, 장황한 표현 구체적 지적
+- 전체 글자 수와 적정 길이 대비 평가
+
+### 3. 🎯 CTA(행동유도) 효과성
+- 메시지에서 행동을 유도하는 문구를 모두 찾아 나열
+- CTA 개수(1개가 최적), 위치, 긴급성 유무 분석
+- CTA 문구의 구체성과 행동 동사 사용 여부 평가
+- 다중 CTA가 있다면 어떤 것에 집중해야 하는지 제안
+
+### 4. ⏰ 발송 시간 적합성
+${sendTime ? `- 실제 발송 시간 ${sendTime}을 기준으로 업종/타겟별 최적 시간대와 비교` : '- 발송 시간 데이터 없음: 메시지 특성에 맞는 최적 시간대 추천'}
+${openRate ? `- 오픈율 ${openRate}%와 발송 시간의 상관관계 추론` : ''}
+- 요일(${sendDate || '미정'})에 따른 발송 적합성 분석
+
+### 5. 📅 발송 빈도 적절성
+${sendRecipients ? `- ${parseInt(sendRecipients||0).toLocaleString()}명 대상 발송의 적절성` : '- 발송 규모 데이터 없음'}
+- 메시지의 내용 특성(프로모션/정보/리텐션)에 맞는 발송 빈도 추천
+${pastCampaigns.length > 0 ? `- 과거 캠페인 발송 이력 대비 빈도 적정성 평가` : ''}
+
+### 6. 👥 타겟 세그먼트 정확도
+${segment ? `- 타겟 "${segment}"와 메시지 톤/내용/혜택의 일치도 분석` : '- 타겟 정보 없음: 메시지 톤으로 추정되는 타겟과 적합한 세그먼트 제안'}
+- 메시지에서 사용된 언어 수준, 호칭, 혜택이 타겟과 맞는지 구체적 분석
+
+### 7. 🧩 개인화 수준
+- 메시지에 [이름], {고객명} 등 개인화 변수가 있는지 확인
+- 개인화가 없다면 어느 위치에 어떤 개인화 요소를 추가할지 구체적 제안
+- "안녕하세요 OO님, 최근 관심 보신 ___" 형태의 예시 제공
+
+### 8. 🎁 혜택/오퍼 매력도
+- 메시지에 제시된 모든 혜택/오퍼를 나열 (할인율, 쿠폰, 무료배송 등)
+- 혜택의 구체성(퍼센트 vs 금액 vs 모호한 표현) 분석
+- 긴급성/희소성 장치 유무 분석 (기간 한정, 수량 한정 등)
+- 경쟁사 대비 매력도 추정
+
+### 9. 📱 채널 적합성
+- 메시지의 길이, 형식, 미디어 포함 여부로 추정되는 최적 채널 분석
+- 짧은 메시지 → SMS/푸시, 긴 메시지 → 이메일/카카오 등 적합도 판단
+
+### 10. 🔗 랜딩 페이지 연결성
+- 메시지에 URL, 링크, "자세히 보기" 등 랜딩 유도 요소가 있는지 확인
+- CTA와 랜딩 페이지의 연결 일관성 추론
+- 클릭 후 예상 경험과 메시지 약속의 일치도 분석
+
+## 출력 형식 (반드시 정확히 지켜주세요)
+
+**첫 번째 JSON 블록** - 10개 항목 점수 (1~10점):
 \`\`\`json
 {"subject":7,"body":6,"cta":8,"timing":5,"frequency":6,"segment":7,"personalization":4,"offer":8,"channel":7,"landing":5}
 \`\`\`
 
-**두 번째 JSON 블록** - 각 항목별 구체적 개선사항 (improvements):
+**두 번째 JSON 블록** - 각 항목별 **이 메시지에 특화된** 개선사항 (일반론 금지, 메시지 원문 기반 구체적 제안):
 \`\`\`json
-{"subject":"현재 제목에서 핵심 혜택을 앞으로 배치하고 15자 이내로 줄이세요","body":"본문 첫 2줄에 핵심 혜택을 배치하고 중복 문구를 제거하세요","cta":"CTA 버튼 문구를 '지금 구매하기'처럼 행동 동사로 변경하세요","timing":"타겟 고객의 활동 피크 시간대를 A/B 테스트하세요","frequency":"발송 빈도를 주 1-2회로 조정하고 수신거부율을 모니터링하세요","segment":"구매 이력 기반 RFM 세분화를 적용하세요","personalization":"고객명과 최근 관심 상품 기반 개인화를 추가하세요","offer":"할인율을 %로 표시하고 사용 조건을 간소화하세요","channel":"메시지 목적과 타겟에 맞는 최적 채널을 재검토하세요","landing":"메시지 혜택과 랜딩 페이지 내용이 일치하도록 수정하세요"}
+{"subject":"구체적 개선사항","body":"구체적 개선사항","cta":"구체적 개선사항","timing":"구체적 개선사항","frequency":"구체적 개선사항","segment":"구체적 개선사항","personalization":"구체적 개선사항","offer":"구체적 개선사항","channel":"구체적 개선사항","landing":"구체적 개선사항"}
 \`\`\`
 
-**세 번째 JSON 블록** - 종합 개선 권장사항 배열 (3~5개):
+**세 번째 JSON 블록** - 종합 개선 권장사항 (3~5개, 실행 가능한 구체적 액션):
 \`\`\`json
-["제목을 15자 이내로 줄이고 핵심 혜택을 앞에 배치하세요","CTA를 1개로 통일하고 긴급성을 추가하세요","고객 이름과 관심 카테고리를 활용한 개인화 메시지를 적용하세요","A/B 테스트로 발송 시간을 최적화하세요"]
+["구체적 액션1","구체적 액션2","구체적 액션3"]
 \`\`\`
 
-그 다음 상세 분석 리포트를 작성하세요:
+## 상세 분석 리포트 (JSON 블록 이후 작성)
 
 ### 📊 종합 점수: __점 / 100점
+${pastCampaigns.length > 0 ? '(과거 평균 대비 +/-__점, 상위/하위 __% 수준)' : ''}
 
-### 📋 항목별 평가
-10가지 항목 모두에 대해:
+### 📋 항목별 상세 분석
+**아래 10가지 항목 모두에 대해 빠짐없이, 최소 3문장 이상으로** 작성하세요.
+각 항목에서 반드시 **이 메시지의 실제 문구를 인용**하고, **구체적 대안 문구를 제시**하세요.
+${pastCampaigns.length > 0 ? '**과거 평균 점수와 비교하여 이 항목이 평균 대비 어떤 수준인지 명시**하세요.' : ''}
 
-1. **✍️ 제목(Subject) 매력도: _점/10**
-   - 📌 현재 분석: (분석)
-   - 💡 개선 제안: (제안)
+1. **✍️ 제목(Subject) 매력도: _점/10**${pastCampaigns.length>0?' (과거 평균: _점)':''}
+   - 📌 현재 분석: (메시지 첫 줄의 실제 문구를 인용하며 분석)
+   - 💡 개선 제안: (대안 문구를 직접 작성하여 제안)
+   ${pastCampaigns.length>0?'- 📊 과거 비교: (과거 성과 좋았던 캠페인의 제목 패턴과 비교)':''}
 
-2~10번 항목도 동일 형식으로 작성
+2~10번 항목도 동일하게 **원문 인용 + 구체적 대안 + ${pastCampaigns.length>0?'과거 비교 + ':''}** 형식으로 작성
 
-### 🔍 오픈율·전환율 영향 분석
+### 🔍 성과 상관관계 분석
+${openRate || convertRate ? `
+**실제 성과 데이터 기반 인과관계 추론:**
+- 오픈율 ${openRate||'미입력'}%에 영향을 미친 핵심 요인 3가지 (메시지 요소와 연결)
+- 전환율 ${convertRate||'미입력'}%에 영향을 미친 핵심 요인 3가지 (CTA, 혜택, 랜딩과 연결)
+- 오픈율 → 전환율 전환 과정에서의 이탈 원인 추정
+${pastCampaigns.length>0?'- 과거 캠페인 대비 성과 트렌드 분석 (개선/악화 추세)':''}` : '- 성과 데이터가 없으므로 메시지 내용 기반으로 예상 오픈율/전환율을 추정하세요.'}
+
+${pastCampaigns.length > 0 ? `### 📈 과거 캠페인 비교 분석
+- 이번 캠페인 vs 과거 평균: 각 항목별 상승/하락 포인트
+- 과거 가장 성과 좋았던 캠페인과 이번 캠페인의 핵심 차이점 3가지
+- 과거 데이터에서 발견되는 성공 패턴/실패 패턴과 이번 캠페인의 부합도
+` : ''}
+
 ### 💡 종합 개선 권장사항 (3~5개)
+- 각각 번호를 매기고, **실제 실행 가능한 구체적 액션**으로 작성
+- "~를 고려하세요" 같은 모호한 표현 대신, "A를 B로 변경하세요" 형태로 작성
+- 우선순위 순서로 배열 (가장 효과 큰 것 먼저)
+
 ### ⭐ 잘된 점 (2~3가지)
+- 이 메시지에서 **실제로 잘한 부분**을 구체적 문구 인용과 함께 설명
 `;
   return p;
 }
