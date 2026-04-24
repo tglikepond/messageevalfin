@@ -69,16 +69,6 @@
           <div class="form-group"><label class="form-label">캠페인명 <span style="color:var(--accent-rose)">*</span></label>
             <input class="form-input" id="campaignName" placeholder="예: 봄맞이 스킨케어 프로모션">
           </div>
-          <div class="form-group"><label class="form-label">발송 채널</label>
-            <select class="form-select" id="sendChannel">
-              <option value="">채널 선택</option>
-              <option value="SMS/MMS">SMS / MMS</option>
-              <option value="앱 푸시">앱 푸시 알림</option>
-              <option value="이메일">이메일</option>
-              <option value="카카오톡">카카오 알림톡/친구톡</option>
-              <option value="RCS">RCS</option>
-            </select>
-          </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">📅 발송 일자</label>
@@ -155,16 +145,10 @@
           <input type="file" id="aiFileInput" accept="image/*" style="display:none"
             onchange="handleAiImageUpload(event)">
         </div>
-        <div class="form-group"><label class="form-label">메시지 제목</label>
-          <input class="form-input" id="aiMsgTitle" placeholder="예: [한정특가] 봄맞이 전 제품 30% 할인!">
-        </div>
         <div class="form-group"><label class="form-label">메시지 본문 <span
               style="color:var(--accent-rose)">*</span></label>
           <textarea class="form-textarea" id="aiMsgBody" style="min-height:150px;"
             placeholder="평가할 메시지 전체 내용을 붙여넣기 하세요..."></textarea>
-        </div>
-        <div class="form-group"><label class="form-label">타겟 고객 설명 (선택)</label>
-          <input class="form-input" id="aiTarget" placeholder="예: 30대 여성, VIP 고객">
         </div>
       </div>
 
@@ -172,11 +156,17 @@
       <div class="section">
         <div class="section-header">
           <div class="section-title">
-            <div class="icon icon-amber">⭐</div>고객 피드백 (선택)
+            <div class="icon icon-amber">⭐</div>고객 피드백
           </div>
-          <span class="section-badge">수집된 피드백 입력</span>
         </div>
-        <div style="max-width:700px;">
+        <div class="form-group">
+          <label class="form-label">피드백 데이터 유무</label>
+          <div style="display:flex;gap:12px;margin-top:4px;">
+            <button type="button" class="btn btn-secondary feedback-toggle-btn" id="fbToggleYes" onclick="toggleFeedback(true)" style="padding:8px 24px;font-size:14px;">✅ 있음</button>
+            <button type="button" class="btn btn-secondary feedback-toggle-btn active" id="fbToggleNo" onclick="toggleFeedback(false)" style="padding:8px 24px;font-size:14px;background:rgba(139,92,246,0.15);border-color:var(--accent-purple);color:var(--accent-purple);">❌ 없음</button>
+          </div>
+        </div>
+        <div id="feedbackFields" style="display:none;max-width:700px;margin-top:12px;padding-top:16px;border-top:1px solid var(--border-glass);">
           <div class="form-group"><label class="form-label">고객 별점 (1~5점)</label>
             <div class="feedback-stars" id="feedbackStars">
               <button class="feedback-star" data-value="1">★</button><button class="feedback-star"
@@ -244,7 +234,8 @@
       <!-- 버튼 그룹 -->
       <div class="btn-group">
         <button class="btn btn-ai" id="aiRunBtn" onclick="runAiAndSave()">🤖 AI 분석 실행 및 저장</button>
-        <button class="btn btn-primary" onclick="saveAndShowResult()">📊 저장 후 종합 결과 보기</button>
+        <button class="btn btn-primary" id="showResultBtn" onclick="saveAndShowResult()" disabled style="opacity:0.5;cursor:not-allowed;">📊 저장 후 종합 결과 보기</button>
+        <p id="resultBtnHint" style="font-size:12px;color:var(--text-muted);text-align:center;width:100%;margin-top:-4px;">💡 AI 분석을 먼저 실행해야 종합 결과를 볼 수 있습니다.</p>
       </div>
     </div>
 

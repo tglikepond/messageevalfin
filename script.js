@@ -32,6 +32,8 @@ let aiScores = {};
 let aiImprovements = {};
 let aiRecommendations = [];
 let feedbackRating = 0;
+let feedbackEnabled = false;
+let aiCompleted = false;
 let currentCampaignId = null;
 let aiImageBase64 = null;
 let aiImageMimeType = null;
@@ -79,23 +81,23 @@ function saveCampaignData() {
     sendDate: document.getElementById('sendDate').value,
     sendTime: document.getElementById('sendTime').value,
     sendRecipients: parseInt(document.getElementById('sendRecipients').value) || 0,
-    channel: document.getElementById('sendChannel').value,
+    channel: '',
     segment: document.getElementById('targetSegment').value,
     openRate: parseFloat(document.getElementById('actualOpenRate').value) || 0,
     convertRate: parseFloat(document.getElementById('actualConvertRate').value) || 0,
-    msgTitle: document.getElementById('aiMsgTitle').value.trim(),
+    msgTitle: '',
     msgBody: document.getElementById('aiMsgBody').value.trim(),
     aiScores: { ...aiScores },
     aiImprovements: { ...aiImprovements },
     aiRecommendations: [...aiRecommendations],
     aiReport: document.getElementById('aiResultContent')?.innerHTML || '',
-    feedback: {
+    feedback: feedbackEnabled ? {
       rating: feedbackRating,
       relevance: parseInt(document.getElementById('fbRelevance').value)||5,
       willingness: parseInt(document.getElementById('fbWillingness').value)||5,
       count: parseInt(document.getElementById('fbCount').value)||0,
       comment: document.getElementById('fbComment').value
-    },
+    } : { rating: 0, relevance: 5, willingness: 5, count: 0, comment: '' },
     createdAt: new Date().toLocaleDateString('ko-KR')
   };
   const campaigns = loadCampaigns();
@@ -350,16 +352,43 @@ function refreshOverview() {
 }
 
 // ===== Utility =====
-function startNewEval(){currentCampaignId=null;aiScores={};aiImprovements={};aiRecommendations=[];selectedCampaignCache=null;resetAll();switchTab('campaign');}
+function startNewEval(){currentCampaignId=null;aiScores={};aiImprovements={};aiRecommendations=[];selectedCampaignCache=null;aiCompleted=false;resetAll();switchTab('campaign');}
 function resetAll(){
-  ['campaignName','sendDate','sendTime','sendRecipients','sendChannel','targetSegment','actualOpenRate','actualConvertRate','aiMsgTitle','aiMsgBody','aiTarget'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['campaignName','sendDate','sendTime','sendRecipients','targetSegment','actualOpenRate','actualConvertRate','aiMsgBody'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   feedbackRating=0;setStars(0);document.getElementById('starLabel').textContent='별점을 선택해 주세요';
   ['fbRelevance','fbWillingness'].forEach(id=>{document.getElementById(id).value=5;});
   ['fbRelVal','fbWillVal'].forEach(id=>{document.getElementById(id).textContent='5';});
   ['fbCount','fbComment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   removeAiImage();document.getElementById('aiResultSection').style.display='none';
+  toggleFeedback(false);
+  // Disable result button
+  const resultBtn=document.getElementById('showResultBtn'); if(resultBtn){resultBtn.disabled=true;resultBtn.style.opacity='0.5';resultBtn.style.cursor='not-allowed';}
+  const hint=document.getElementById('resultBtnHint'); if(hint)hint.style.display='block';
 }
 
+function toggleFeedback(enabled) {
+  feedbackEnabled = enabled;
+  const fields = document.getElementById('feedbackFields');
+  const yesBtn = document.getElementById('fbToggleYes');
+  const noBtn = document.getElementById('fbToggleNo');
+  if (enabled) {
+    fields.style.display = 'block';
+    yesBtn.style.background = 'rgba(139,92,246,0.15)'; yesBtn.style.borderColor = 'var(--accent-purple)'; yesBtn.style.color = 'var(--accent-purple)';
+    noBtn.style.background = ''; noBtn.style.borderColor = ''; noBtn.style.color = '';
+  } else {
+    fields.style.display = 'none';
+    noBtn.style.background = 'rgba(139,92,246,0.15)'; noBtn.style.borderColor = 'var(--accent-purple)'; noBtn.style.color = 'var(--accent-purple)';
+    yesBtn.style.background = ''; yesBtn.style.borderColor = ''; yesBtn.style.color = '';
+  }
+}
+
+function enableResultButton() {
+  aiCompleted = true;
+  const btn = document.getElementById('showResultBtn');
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+  const hint = document.getElementById('resultBtnHint');
+  if (hint) hint.style.display = 'none';
+}
 function exportReport(){
   const id=parseInt(document.getElementById('resultCampaignSelect').value);if(!id){showToast('⚠️ 캠페인 선택');return;}
   const c=loadCampaigns().find(x=>x.id===id);if(!c)return;
@@ -412,10 +441,7 @@ function removeAiImage(){aiImageBase64=null;aiImageMimeType=null;document.getEle
 function initDragDrop(){const area=document.getElementById('aiUploadArea');if(!area)return;area.addEventListener('dragover',e=>{e.preventDefault();area.style.borderColor='#8b5cf6';});area.addEventListener('dragleave',()=>{area.style.borderColor='';});area.addEventListener('drop',e=>{e.preventDefault();area.style.borderColor='';const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/')){const dt=new DataTransfer();dt.items.add(f);document.getElementById('aiFileInput').files=dt.files;handleAiImageUpload({target:{files:[f]}});}});}
 
 function buildAiPrompt(){
-  const ch=document.getElementById('sendChannel').value;
-  const title=document.getElementById('aiMsgTitle').value.trim();
   const body=document.getElementById('aiMsgBody').value.trim();
-  const target=document.getElementById('aiTarget').value.trim()||document.getElementById('targetSegment').value;
   const sendDate=document.getElementById('sendDate').value;
   const sendTime=document.getElementById('sendTime').value;
   const sendRecipients=document.getElementById('sendRecipients').value;
@@ -425,7 +451,7 @@ function buildAiPrompt(){
   const campaignName=document.getElementById('campaignName').value.trim();
 
   // Collect feedback info
-  const fbRating = feedbackRating;
+  const fbRating = feedbackEnabled ? feedbackRating : 0;
   const fbRelevance = document.getElementById('fbRelevance').value;
   const fbWillingness = document.getElementById('fbWillingness').value;
   const fbComment = document.getElementById('fbComment').value.trim();
@@ -435,12 +461,10 @@ function buildAiPrompt(){
 ## 📋 캠페인 기본 정보
 `;
   if(campaignName)p+=`- 캠페인명: ${campaignName}\n`;
-  if(ch)p+=`- 발송 채널: ${ch}\n`;
   if(sendDate)p+=`- 발송 일자: ${sendDate}\n`;
   if(sendTime)p+=`- 발송 시간: ${sendTime}\n`;
   if(sendRecipients)p+=`- 발송 인원: ${parseInt(sendRecipients).toLocaleString()}명\n`;
-  if(target)p+=`- 타겟 고객: ${target}\n`;
-  if(segment && segment !== target)p+=`- 타겟 세그먼트: ${segment}\n`;
+  if(segment)p+=`- 타겟 세그먼트: ${segment}\n`;
   if(openRate)p+=`- 실제 오픈율: ${openRate}%\n`;
   if(convertRate)p+=`- 실제 전환율: ${convertRate}%\n`;
 
@@ -454,7 +478,6 @@ function buildAiPrompt(){
   }
 
   p+=`\n## ✉️ 메시지 내용\n`;
-  if(title)p+=`- 메시지 제목: ${title}\n`;
   p+=`- 메시지 본문:\n\`\`\`\n${body}\n\`\`\`\n`;
   if(aiImageBase64)p+=`\n(첨부 이미지도 함께 분석해 주세요)\n`;
   p+=`
@@ -544,6 +567,7 @@ async function runAiEvaluation(){
     document.getElementById('aiResultContent').innerHTML = reportHtml;
     // Auto-save after AI evaluation
     saveCampaignData();
+    enableResultButton();
     showToast('🤖 AI 평가 완료! 종합 결과에서 확인하세요.');
   }catch(error){
     document.getElementById('aiLoading').style.display='none';document.getElementById('aiResultCard').style.display='block';
