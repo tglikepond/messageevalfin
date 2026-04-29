@@ -88,6 +88,7 @@ function saveCampaignData() {
     msgTitle: '',
     msgBody: document.getElementById('aiMsgBody').value.trim(),
     ctaLinks: getCtaLinks(),
+    msgStats: calculateMsgStats(document.getElementById('aiMsgBody').value.trim()),
     aiScores: { ...aiScores },
     aiImprovements: { ...aiImprovements },
     aiRecommendations: [...aiRecommendations],
@@ -197,6 +198,36 @@ function loadCampaignResult() {
       ${c.feedback.comment ? '<br><strong>의견:</strong> '+c.feedback.comment.slice(0,60)+(c.feedback.comment.length>60?'...':'') : ''}`;
   } else {
     document.getElementById('resultFbSummary').innerHTML = '<span style="color:var(--text-muted)">피드백 미입력</span>';
+  }
+
+  // Message Stats (quantitative metrics)
+  const stats = c.msgStats || (c.msgBody ? calculateMsgStats(c.msgBody) : null);
+  const statsSection = document.getElementById('resultMsgStatsSection');
+  if (stats && stats.charCount > 0) {
+    statsSection.style.display = 'block';
+    document.getElementById('resultMsgStats').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-value blue">${stats.charCount}<span style="font-size:12px;color:var(--text-muted);">자</span></div>
+        <div class="stat-label">총 글자 수</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">공백 제외 ${stats.charCountNoSpaces}자 · ${stats.lineCount}줄</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value amber">${stats.emojiCount}<span style="font-size:12px;color:var(--text-muted);">개</span></div>
+        <div class="stat-label">이모지 사용</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${stats.emojiList && stats.emojiList.length > 0 ? stats.emojiList.join(' ') : '없음'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value emerald">${stats.personalizationCount}<span style="font-size:12px;color:var(--text-muted);">개</span></div>
+        <div class="stat-label">개인화 변수</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${stats.personalizationList && stats.personalizationList.length > 0 ? stats.personalizationList.join(', ') : '없음'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value purple">${(c.ctaLinks || []).length}<span style="font-size:12px;color:var(--text-muted);">개</span></div>
+        <div class="stat-label">CTA 버튼</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">본문 URL ${stats.urlCount || 0}개</div>
+      </div>`;
+  } else {
+    statsSection.style.display = 'none';
   }
 
   // Result table (AI 10 items)
@@ -524,6 +555,27 @@ function setCtaLinks(links) {
     container.appendChild(row);
   });
   updateCtaUI();
+}
+
+function calculateMsgStats(body) {
+  if (!body) return { charCount: 0, charCountNoSpaces: 0, lineCount: 0, emojiCount: 0, emojiList: [], personalizationCount: 0, personalizationList: [], urlCount: 0 };
+  const charCount = body.length;
+  const charCountNoSpaces = body.replace(/\s/g, '').length;
+  const emojiRegex = /(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|[\u2600-\u27BF]|[\uFE00-\uFE0F]|[\u200D]|[\uD83C-\uDBFF][\uDC00-\uDFFF])/gu;
+  const emojiMatches = body.match(emojiRegex) || [];
+  const emojiList = [...new Set(emojiMatches)];
+  const personalizationRegex = /\[.*?\]|\{.*?\}|#{.*?}|\$\{.*?\}|%%.*?%%|@.*?@|고객명|회원님|○○|OO|님의/g;
+  const personalizationMatches = body.match(personalizationRegex) || [];
+  const lineCount = body.split('\n').filter(l => l.trim()).length;
+  const urlRegex = /https?:\/\/[^\s<>"']+/g;
+  const urlsInBody = body.match(urlRegex) || [];
+  return {
+    charCount, charCountNoSpaces, lineCount,
+    emojiCount: emojiMatches.length, emojiList,
+    personalizationCount: personalizationMatches.length,
+    personalizationList: personalizationMatches,
+    urlCount: urlsInBody.length
+  };
 }
 
 function buildAiPrompt(){
@@ -918,48 +970,67 @@ function renderAiScoreGrid(){
 }
 
 function markdownToHtml(md) {
-  // Escape HTML entities first
-  let html = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let html = md;
   
-  // Handle markdown tables: | col | col | col |
+  // 1. Extract and protect tables BEFORE any escaping
+  const tables = [];
   html = html.replace(/(?:^(\|.+\|)\s*\n(\|[-| :]+\|)\s*\n((?:\|.+\|\s*\n?)+))/gm, function(match, header, separator, bodyRows) {
-    const headerCells = header.split('|').filter(c => c.trim()).map(c => `<th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;border-bottom:2px solid var(--border-glass);">${c.trim()}</th>`).join('');
+    const headerCells = header.split('|').filter(c => c.trim()).map(c =>
+      `<th style="padding:10px 14px;text-align:left;font-size:13px;font-weight:700;color:var(--text-primary);background:rgba(139,92,246,0.08);border-bottom:2px solid rgba(139,92,246,0.2);">${c.trim()}</th>`
+    ).join('');
     const rows = bodyRows.trim().split('\n').map(row => {
-      const cells = row.split('|').filter(c => c.trim()).map(c => `<td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--border-glass);">${c.trim()}</td>`).join('');
-      return `<tr>${cells}</tr>`;
+      const cells = row.split('|').filter(c => c.trim()).map(c => {
+        const val = c.trim();
+        // Highlight evaluation words
+        let styled = val.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--accent-purple);">$1</strong>');
+        return `<td style="padding:8px 14px;font-size:13px;color:var(--text-secondary);border-bottom:1px solid var(--border-glass);">${styled}</td>`;
+      }).join('');
+      return `<tr style="transition:background 0.2s;">${cells}</tr>`;
     }).join('');
-    return `<table style="width:100%;border-collapse:collapse;margin:12px 0;background:rgba(15,23,42,0.3);border-radius:8px;overflow:hidden;"><thead><tr>${headerCells}</tr></thead><tbody>${rows}</tbody></table>`;
+    const tableHtml = `<table style="width:100%;border-collapse:collapse;margin:16px 0;background:rgba(15,23,42,0.4);border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border-glass);"><thead><tr>${headerCells}</tr></thead><tbody>${rows}</tbody></table>`;
+    const placeholder = `%%TABLE_${tables.length}%%`;
+    tables.push(tableHtml);
+    return placeholder;
   });
+
+  // 2. Escape HTML entities
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   
-  // Headers
-  html = html.replace(/^#### (.+)$/gm, '<h5 style="margin:16px 0 8px;font-size:14px;color:var(--text-primary);">$1</h5>');
+  // 3. Headers
+  html = html.replace(/^#### (.+)$/gm, '<h5 style="margin:14px 0 6px;font-size:14px;color:var(--text-primary);">$1</h5>');
   html = html.replace(/^### (.+)$/gm, '<h4 style="margin:20px 0 10px;font-size:15px;color:var(--text-primary);border-bottom:1px solid var(--border-glass);padding-bottom:8px;">$1</h4>');
   html = html.replace(/^## (.+)$/gm, '<h3 style="margin:24px 0 12px;font-size:17px;color:var(--accent-purple);">$1</h3>');
   html = html.replace(/^# (.+)$/gm, '<h3 style="margin:24px 0 12px;font-size:18px;color:var(--accent-purple);">$1</h3>');
   
-  // Bold and italic
+  // 4. Bold and italic
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   
-  // Inline code
+  // 5. Inline code
   html = html.replace(/`(.+?)`/g, '<code style="background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;font-size:12px;">$1</code>');
   
-  // Quoted text "..." highlight
+  // 6. Quoted text highlight
   html = html.replace(/"([^"]{2,80})"/g, '<span style="color:var(--accent-blue);font-weight:600;">"$1"</span>');
   
-  // List items
+  // 7. Numbered lists
   html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0;padding:4px 0;"><span style="color:var(--accent-purple);font-weight:700;min-width:20px;">$1.</span><span>$2</span></div>');
-  html = html.replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;padding-left:8px;"><span style="color:var(--accent-purple);">•</span><span>$1</span></div>');
+  // Bullet lists
   html = html.replace(/^\s{2,}[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:2px 0;padding-left:24px;"><span style="color:var(--text-muted);">◦</span><span style="font-size:12px;">$1</span></div>');
+  html = html.replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;padding-left:8px;"><span style="color:var(--accent-purple);">•</span><span>$1</span></div>');
   
-  // Paragraph breaks
+  // 8. Paragraph breaks
   html = html.replace(/\n\n+/g, '</div><div style="margin:8px 0;">');
   html = html.replace(/\n/g, '<br>');
   
-  // Wrap in container
+  // 9. Wrap in container
   html = '<div style="margin:8px 0;">' + html + '</div>';
   
-  // Clean empty divs
+  // 10. Re-insert protected tables
+  tables.forEach((tableHtml, i) => {
+    html = html.replace(`%%TABLE_${i}%%`, tableHtml);
+  });
+  
+  // 11. Clean empty divs
   html = html.replace(/<div style="margin:8px 0;">\s*<\/div>/g, '');
   
   return html;
