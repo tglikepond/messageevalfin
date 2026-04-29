@@ -1,3 +1,6 @@
+// ===== Firebase Imports =====
+import { db, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy } from './firebase-config.js';
+
 // ===== 10 AI Evaluation Items (Full Analysis) =====
 const aiEvalItems = [
   { id:'subject', title:'첫 줄 매력도', category:'콘텐츠', icon:'✍️',
@@ -22,10 +25,45 @@ const aiEvalItems = [
     tip:'메시지-랜딩 간 일치, 3클릭 이내 전환', rec:'랜딩 페이지와 메시지 간 일관성을 강화하세요' }
 ];
 
-// ===== Storage =====
-const STORAGE_KEY = 'msg_eval_campaigns_v4';
-function loadCampaigns() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
-function saveCampaigns(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+// ===== Firestore Storage =====
+const CAMPAIGNS_COLLECTION = 'campaigns';
+let campaignsCache = []; // Local cache synced with Firestore
+
+function loadCampaigns() { return campaignsCache; }
+
+async function saveCampaignToFirestore(campaign) {
+  try {
+    await setDoc(doc(db, CAMPAIGNS_COLLECTION, String(campaign.id)), campaign);
+  } catch (e) {
+    console.error('Firestore save error:', e);
+    showToast('⚠️ 저장 실패: ' + e.message);
+  }
+}
+
+async function deleteCampaignFromFirestore(id) {
+  try {
+    await deleteDoc(doc(db, CAMPAIGNS_COLLECTION, String(id)));
+  } catch (e) {
+    console.error('Firestore delete error:', e);
+    showToast('⚠️ 삭제 실패: ' + e.message);
+  }
+}
+
+function initFirestore() {
+  // Real-time listener: syncs all changes from any user
+  const q = query(collection(db, CAMPAIGNS_COLLECTION));
+  onSnapshot(q, (snapshot) => {
+    campaignsCache = snapshot.docs.map(d => ({ ...d.data(), id: isNaN(Number(d.id)) ? d.id : Number(d.id) }));
+    // Sort by createdAt or id
+    campaignsCache.sort((a, b) => (a.id > b.id ? 1 : -1));
+    updateBadge();
+    refreshOverview();
+    refreshResultSelector();
+  }, (error) => {
+    console.error('Firestore listener error:', error);
+    showToast('⚠️ 데이터 동기화 오류: ' + error.message);
+  });
+}
 
 // ===== State =====
 let aiScores = {};
@@ -45,12 +83,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initFeedbackStars();
   initDragDrop();
   initApiKeyField();
-  refreshOverview();
-  refreshResultSelector();
+  initFirestore(); // Start real-time sync with Firestore
   updateBadge();
 });
 
-function updateBadge() { document.getElementById('savedCountBadge').textContent = `📊 저장된 평가: ${loadCampaigns().length}건`; }
+// ===== Window bindings for HTML onclick handlers =====
+Object.assign(window, {
+  switchTab, saveAndShowResult, runAiAndSave, loadCampaignResult,
+  deleteCampaign, openModal, closeModal, exportReport, startNewEval,
+  toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
+  removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation
+});
+
+function updateBadge() { document.getElementById('savedCountBadge').textContent = `📊 저장된 평가: ${campaignsCache.length}건`; }
 
 // ===== Tabs =====
 function initTabs() { document.querySelectorAll('.nav-tab').forEach(tab => { tab.addEventListener('click', () => switchTab(tab.dataset.tab)); }); }
@@ -73,7 +118,7 @@ function initFeedbackStars() {
 function setStars(r) { document.querySelectorAll('.feedback-star').forEach(s => s.classList.toggle('active', parseInt(s.dataset.value) <= r)); }
 
 // ===== Save Campaign Data =====
-function saveCampaignData() {
+async function saveCampaignData() {
   const name = document.getElementById('campaignName').value.trim();
   if (!name) { showToast('⚠️ 캠페인명을 입력해 주세요.'); return false; }
   const campaign = {
@@ -102,19 +147,16 @@ function saveCampaignData() {
     } : { rating: 0, relevance: 5, willingness: 5, count: 0, comment: '' },
     createdAt: new Date().toLocaleDateString('ko-KR')
   };
-  const campaigns = loadCampaigns();
-  const idx = campaigns.findIndex(c => c.id === campaign.id);
-  if (idx >= 0) campaigns[idx] = campaign;
-  else campaigns.push(campaign);
-  saveCampaigns(campaigns);
+  await saveCampaignToFirestore(campaign);
   currentCampaignId = campaign.id;
   updateBadge();
   return true;
 }
 
 // ===== Navigation Actions =====
-function saveAndShowResult() {
-  if (!saveCampaignData()) return;
+async function saveAndShowResult() {
+  const result = await saveCampaignData();
+  if (!result) return;
   switchTab('results');
   document.getElementById('resultCampaignSelect').value = currentCampaignId;
   loadCampaignResult();
@@ -337,12 +379,12 @@ function openModal(type) {
 
 function closeModal(e) { if (e && e.target !== e.currentTarget) return; document.getElementById('modalOverlay').classList.remove('show'); }
 
-function deleteCampaign() {
+async function deleteCampaign() {
   const id = parseInt(document.getElementById('resultCampaignSelect').value);
   if (!id) { showToast('⚠️ 삭제할 캠페인 선택'); return; }
   if (!confirm('삭제하시겠습니까?')) return;
-  saveCampaigns(loadCampaigns().filter(c=>c.id!==id)); selectedCampaignCache=null;
-  refreshResultSelector(); updateBadge();
+  await deleteCampaignFromFirestore(id);
+  selectedCampaignCache=null;
   document.getElementById('scoreRing').style.strokeDashoffset='283';
   document.getElementById('scoreNum').textContent='—';
   document.getElementById('scoreGrade').textContent='캠페인을 선택해 주세요';
