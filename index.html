@@ -142,20 +142,7 @@
           </div>
         </div>
 
-        <div class="form-group"><label class="form-label">메시지 이미지 (선택)</label>
-          <div class="ai-upload-area" id="aiUploadArea" onclick="document.getElementById('aiFileInput').click()">
-            <div id="aiUploadPlaceholder">
-              <div class="ai-upload-icon">🖼️</div>
-              <div class="ai-upload-text">이미지를 클릭하거나 드래그하여 업로드</div>
-              <div class="ai-upload-hint">PNG, JPG, WEBP (최대 10MB)</div>
-            </div>
-            <div id="aiPreviewContainer" style="display:none;"><img id="aiPreviewImg" class="ai-preview-img"
-                alt="미리보기"><button class="ai-remove-img" onclick="event.stopPropagation();removeAiImage()">✕</button>
-            </div>
-          </div>
-          <input type="file" id="aiFileInput" accept="image/*" style="display:none"
-            onchange="handleAiImageUpload(event)">
-        </div>
+
         <div class="form-group"><label class="form-label">메시지 본문 <span style="color:var(--accent-rose)">*</span></label>
           <textarea class="form-textarea" id="aiMsgBody" style="min-height:150px;"
             placeholder="평가할 메시지 전체 내용을 붙여넣기 하세요..."></textarea>
@@ -346,6 +333,27 @@
             <div id="resultFbSummary"
               style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin-top:8px;"></div>
           </div>
+        </div>
+
+        <!-- 메시지 본문 카드 -->
+        <div class="section" style="margin-top:16px;" id="resultMsgBodySection">
+          <div class="section-header">
+            <div class="section-title">
+              <div class="icon icon-purple">✉️</div>메시지 본문
+            </div>
+            <button class="detail-btn ai" style="padding:5px 12px;font-size:11px;" onclick="openModal('msgBody')">📋 전체 보기</button>
+          </div>
+          <div id="resultMsgBody" style="font-size:13px;color:var(--text-secondary);line-height:1.8;padding:16px;background:rgba(15,23,42,0.4);border-radius:var(--radius-md);border:1px solid var(--border-glass);white-space:pre-wrap;max-height:200px;overflow-y:auto;"></div>
+        </div>
+
+        <!-- CTA 링크 카드 -->
+        <div class="section" style="margin-top:16px;" id="resultCtaSection">
+          <div class="section-header">
+            <div class="section-title">
+              <div class="icon icon-blue">🔗</div>CTA 링크 정보
+            </div>
+          </div>
+          <div id="resultCtaLinks" style="font-size:13px;color:var(--text-secondary);line-height:1.8;"></div>
         </div>
 
         <!-- 정량 지표 카드 -->

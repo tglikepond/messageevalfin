@@ -264,6 +264,36 @@ function loadCampaignResult() {
     document.getElementById('resultFbSummary').innerHTML = '<span style="color:var(--text-muted)">피드백 미입력</span>';
   }
 
+  // Message Body display
+  const msgBodyEl = document.getElementById('resultMsgBody');
+  const msgBodySection = document.getElementById('resultMsgBodySection');
+  if (c.msgBody) {
+    msgBodySection.style.display = 'block';
+    const truncated = c.msgBody.length > 300 ? c.msgBody.slice(0, 300) + '...' : c.msgBody;
+    msgBodyEl.textContent = truncated;
+  } else {
+    msgBodySection.style.display = 'none';
+  }
+
+  // CTA Links display
+  const ctaSection = document.getElementById('resultCtaSection');
+  const ctaEl = document.getElementById('resultCtaLinks');
+  const ctaLinks = c.ctaLinks || [];
+  if (ctaLinks.length > 0) {
+    ctaSection.style.display = 'block';
+    ctaEl.innerHTML = ctaLinks.map((link, i) =>
+      `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(15,23,42,0.4);border-radius:var(--radius-md);border:1px solid var(--border-glass);margin-bottom:8px;">
+        <span style="font-size:12px;color:var(--accent-purple);font-weight:700;min-width:20px;">${['①','②','③','④'][i] || (i+1)}</span>
+        <div style="flex:1;">
+          <div style="font-weight:600;color:var(--text-primary);font-size:13px;">${link.name || '(미입력)'}</div>
+          <a href="${link.url}" target="_blank" style="font-size:12px;color:var(--accent-blue);word-break:break-all;">${link.url || '(미입력)'}</a>
+        </div>
+      </div>`
+    ).join('');
+  } else {
+    ctaSection.style.display = 'none';
+  }
+
   // Message Stats (quantitative metrics)
   const stats = c.msgStats || (c.msgBody ? calculateMsgStats(c.msgBody) : null);
   const statsSection = document.getElementById('resultMsgStatsSection');
@@ -395,6 +425,26 @@ function openModal(type) {
         ${fb.comment ? `<div style="padding:16px;background:rgba(15,23,42,0.5);border-radius:var(--radius-md);border:1px solid var(--border-glass);">
           <h4 style="margin-bottom:8px;">💬 주요 고객 의견</h4><p style="font-size:14px;color:var(--text-secondary);line-height:1.8;white-space:pre-wrap;">${fb.comment}</p></div>` : ''}`;
     }
+  } else if (type === 'msgBody') {
+    title.textContent = '✉️ 메시지 본문 및 CTA 링크';
+    const ctaLinks = c.ctaLinks || [];
+    body.innerHTML = `
+      <h4 style="margin-bottom:12px;">📄 메시지 전문</h4>
+      <div style="padding:16px;background:rgba(15,23,42,0.5);border-radius:var(--radius-md);border:1px solid var(--border-glass);margin-bottom:20px;">
+        <p style="font-size:14px;color:var(--text-secondary);line-height:1.8;white-space:pre-wrap;">${c.msgBody || '메시지 본문 없음'}</p>
+      </div>
+      ${ctaLinks.length > 0 ? `
+        <h4 style="margin-bottom:12px;">🔗 CTA 링크 (${ctaLinks.length}개)</h4>
+        ${ctaLinks.map((link, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(15,23,42,0.5);border-radius:var(--radius-md);border:1px solid var(--border-glass);margin-bottom:8px;">
+            <span style="font-size:14px;color:var(--accent-purple);font-weight:700;">${['①','②','③','④'][i] || (i+1)}</span>
+            <div>
+              <div style="font-weight:600;color:var(--text-primary);font-size:14px;">${link.name || '(미입력)'}</div>
+              <a href="${link.url}" target="_blank" style="font-size:13px;color:var(--accent-blue);word-break:break-all;">${link.url || '(미입력)'}</a>
+            </div>
+          </div>
+        `).join('')}
+      ` : '<p style="color:var(--text-muted);">CTA 링크 없음</p>'}`;
   }
   overlay.classList.add('show');
 }
@@ -1274,7 +1324,42 @@ ${content}
 각 문안은 해당 유형의 특성을 극대화하되, 사용자가 제공한 핵심 내용은 반드시 포함하세요.
 `;
 
-  return commonContext + typePrompt + outputFormat;
+  // Build reference from best-performing past campaigns (by open rate)
+  let bestCampaignRef = '';
+  const pastCampaigns = loadCampaigns().filter(c => c.msgBody && c.openRate > 0);
+  if (pastCampaigns.length > 0) {
+    const sorted = [...pastCampaigns].sort((a, b) => (b.openRate || 0) - (a.openRate || 0));
+    const best = sorted[0];
+    const top3 = sorted.slice(0, 3);
+
+    bestCampaignRef = `
+# 📊 과거 성과 기반 레퍼런스 (반드시 참고하세요!)
+
+## 🏆 오픈율 1위 캠페인 (가장 성과가 좋았던 메시지)
+- 캠페인명: "${best.name}"
+- 오픈율: ${best.openRate}% | 전환율: ${best.convertRate}%
+- 발송일: ${best.sendDate || '미입력'}
+- 메시지 본문:
+\`\`\`
+${best.msgBody}
+\`\`\`
+${(best.ctaLinks && best.ctaLinks.length > 0) ? `- CTA 버튼: ${best.ctaLinks.map(l => `"${l.name}"`).join(', ')}` : ''}
+
+**이 메시지가 높은 오픈율을 달성한 요인을 분석하고, 새 문안 작성 시 다음을 반영하세요:**
+- 오프닝 문구의 구조와 호기심 유도 패턴
+- 본문의 길이, 이모지 사용 빈도, 문장 구조
+- CTA 문구의 행동 유도 방식
+- 전체적인 톤앤매너와 감정적 어필 방식
+
+${top3.length > 1 ? `## 📈 오픈율 상위 캠페인 요약 (Top ${top3.length})
+${top3.map((c, i) => `${i + 1}. "${c.name}" — 오픈율 ${c.openRate}%, 전환율 ${c.convertRate}%
+   첫 줄: ${(c.msgBody || '').split('\\n')[0].slice(0, 80)}`).join('\\n')}
+
+**위 성과 데이터에서 발견되는 공통 성공 패턴을 새 문안에 적극 반영하세요.**` : ''}
+`;
+  }
+
+  return commonContext + typePrompt + bestCampaignRef + outputFormat;
 }
 
 async function generateMessage() {
