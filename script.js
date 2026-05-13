@@ -106,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirestore(); // Start real-time sync with Firestore
   updateBadge();
   initGenServiceType();
+  initImgGen();
 });
 
 // ===== Window bindings for HTML onclick handlers =====
@@ -114,7 +115,9 @@ Object.assign(window, {
   deleteCampaign, openModal, closeModal, exportReport, startNewEval,
   toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
   removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
-  generateMessage, copyGeneratedMessage
+  generateMessage, copyGeneratedMessage,
+  handleImgGenUpload, removeImgGenImage, setImgSize,
+  generateAlimtokImage, downloadAlimtokImage
 });
 
 function updateBadge() { document.getElementById('savedCountBadge').textContent = `📊 저장된 평가: ${campaignsCache.length}건`; }
@@ -1538,4 +1541,260 @@ function copyGeneratedMessage(index) {
     showToast('📋 문안이 클립보드에 복사되었습니다!');
   });
 }
+
+// ===== ALIMTOK IMAGE GENERATOR =====
+let imgGenImageData = null; // Base64 data URL of uploaded image
+let imgGenImageEl = null;   // HTMLImageElement for canvas drawing
+let imgGenSizeMode = 'large'; // 'large' (400x320) or 'small' (230x230)
+let imgGenGenerated = false;
+
+// Load font for canvas
+const CANVAS_FONT_FAMILY = '"Spoqa Han Sans Neo", "Noto Sans KR", "Malgun Gothic", sans-serif';
+
+function initImgGenTextInput() {
+  const input = document.getElementById('imgGenText');
+  if (!input) return;
+  
+  input.addEventListener('input', () => {
+    const len = input.value.length;
+    document.getElementById('imgTextCount').textContent = `${len} / 20`;
+    
+    const errorEl = document.getElementById('imgTextError');
+    if (len > 0 && len < 4) {
+      errorEl.style.display = 'block';
+      errorEl.textContent = '⚠️ 최소 4자 이상 입력해 주세요.';
+    } else if (len > 20) {
+      errorEl.style.display = 'block';
+      errorEl.textContent = '⚠️ 최대 20자까지만 입력 가능합니다.';
+    } else {
+      errorEl.style.display = 'none';
+    }
+    
+    // Live preview update
+    if (len >= 4) {
+      renderAlimtokCanvas();
+    }
+  });
+}
+
+function initImgGenDragDrop() {
+  const area = document.getElementById('imgGenUploadArea');
+  if (!area) return;
+  area.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    area.style.borderColor = '#8b5cf6';
+    area.style.background = 'rgba(139, 92, 246, 0.06)';
+  });
+  area.addEventListener('dragleave', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    area.style.borderColor = '';
+    area.style.background = '';
+  });
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    area.style.borderColor = '';
+    area.style.background = '';
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) {
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      document.getElementById('imgGenFileInput').files = dt.files;
+      handleImgGenUpload({ target: { files: [f] } });
+    }
+  });
+}
+
+function handleImgGenUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('⚠️ 10MB 이하 이미지만 업로드 가능합니다.');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = e => {
+    imgGenImageData = e.target.result;
+    
+    // Create image element for canvas
+    const img = new Image();
+    img.onload = () => {
+      imgGenImageEl = img;
+      // Show preview
+      document.getElementById('imgGenPreviewImg').src = imgGenImageData;
+      document.getElementById('imgGenUploadPlaceholder').style.display = 'none';
+      document.getElementById('imgGenPreviewContainer').style.display = 'block';
+      document.getElementById('imgGenUploadArea').classList.add('has-image');
+      // Update canvas preview
+      renderAlimtokCanvas();
+    };
+    img.src = imgGenImageData;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImgGenImage() {
+  imgGenImageData = null;
+  imgGenImageEl = null;
+  document.getElementById('imgGenFileInput').value = '';
+  document.getElementById('imgGenUploadPlaceholder').style.display = 'block';
+  document.getElementById('imgGenPreviewContainer').style.display = 'none';
+  document.getElementById('imgGenUploadArea').classList.remove('has-image');
+  renderAlimtokCanvas();
+}
+
+function setImgSize(size) {
+  imgGenSizeMode = size;
+  document.querySelectorAll('.img-size-btn').forEach(btn => btn.classList.remove('active'));
+  if (size === 'large') {
+    document.getElementById('imgSizeLarge').classList.add('active');
+  } else {
+    document.getElementById('imgSizeSmall').classList.add('active');
+  }
+  renderAlimtokCanvas();
+}
+
+function renderAlimtokCanvas() {
+  const canvas = document.getElementById('imgGenCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  // Clear and fill background
+  ctx.clearRect(0, 0, 800, 400);
+  ctx.fillStyle = '#F9F9F9';
+  ctx.fillRect(0, 0, 800, 400);
+  
+  // Draw text (top-left)
+  const text = document.getElementById('imgGenText')?.value || '';
+  if (text.length >= 1) {
+    ctx.fillStyle = '#333333';
+    ctx.font = `bold 54px ${CANVAS_FONT_FAMILY}`;
+    ctx.textBaseline = 'top';
+    ctx.letterSpacing = '0px';
+    
+    // Text position: top-left with padding
+    const textX = 40;
+    const textY = 40;
+    const lineHeight = 74;
+    
+    // Word wrap - split by character groups if line is too long
+    // Max width for text area depends on whether image is present
+    const maxTextWidth = imgGenImageEl ? 360 : 720;
+    
+    const lines = wrapText(ctx, text, maxTextWidth);
+    lines.forEach((line, i) => {
+      ctx.fillText(line, textX, textY + (i * lineHeight));
+    });
+  }
+  
+  // Draw uploaded image (bottom-right)
+  if (imgGenImageEl) {
+    const maxW = imgGenSizeMode === 'large' ? 400 : 230;
+    const maxH = imgGenSizeMode === 'large' ? 320 : 230;
+    
+    // Calculate fitted dimensions maintaining aspect ratio
+    let drawW = imgGenImageEl.naturalWidth;
+    let drawH = imgGenImageEl.naturalHeight;
+    
+    const scaleW = maxW / drawW;
+    const scaleH = maxH / drawH;
+    const scale = Math.min(scaleW, scaleH, 1); // Don't upscale beyond natural size
+    
+    drawW = Math.round(drawW * scale);
+    drawH = Math.round(drawH * scale);
+    
+    // Position at bottom-right
+    const imgX = 800 - drawW;
+    const imgY = 400 - drawH;
+    
+    ctx.drawImage(imgGenImageEl, imgX, imgY, drawW, drawH);
+  }
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const lines = [];
+  let currentLine = '';
+  
+  for (let i = 0; i < text.length; i++) {
+    const testLine = currentLine + text[i];
+    const metrics = ctx.measureText(testLine);
+    
+    if (metrics.width > maxWidth && currentLine.length > 0) {
+      lines.push(currentLine);
+      currentLine = text[i];
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  
+  return lines;
+}
+
+function generateAlimtokImage() {
+  const text = document.getElementById('imgGenText')?.value || '';
+  
+  // Validate text length
+  if (text.length < 4) {
+    showToast('⚠️ 문구를 최소 4자 이상 입력해 주세요.');
+    document.getElementById('imgGenText')?.focus();
+    return;
+  }
+  if (text.length > 20) {
+    showToast('⚠️ 문구는 최대 20자까지만 입력 가능합니다.');
+    return;
+  }
+  
+  // Render final image
+  renderAlimtokCanvas();
+  
+  imgGenGenerated = true;
+  
+  // Show download button
+  document.getElementById('imgDownloadBtn').style.display = 'flex';
+  
+  showToast('🖼️ 알림톡 이미지가 생성되었습니다!');
+  
+  // Scroll to canvas
+  document.getElementById('imgGenCanvasWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function downloadAlimtokImage() {
+  if (!imgGenGenerated) {
+    showToast('⚠️ 먼저 이미지를 생성해 주세요.');
+    return;
+  }
+  
+  const canvas = document.getElementById('imgGenCanvas');
+  const dataUrl = canvas.toDataURL('image/png');
+  
+  const link = document.createElement('a');
+  link.download = `alimtok_image_${new Date().toISOString().slice(0, 10)}_${Date.now()}.png`;
+  link.href = dataUrl;
+  link.click();
+  
+  showToast('📥 PNG 이미지가 다운로드되었습니다!');
+}
+
+// Initialize image generator on DOMContentLoaded
+function initImgGen() {
+  initImgGenTextInput();
+  initImgGenDragDrop();
+  
+  // Preload font for canvas rendering
+  if (document.fonts) {
+    document.fonts.load('bold 54px "Spoqa Han Sans Neo"').then(() => {
+      renderAlimtokCanvas();
+    }).catch(() => {
+      renderAlimtokCanvas();
+    });
+  } else {
+    // Fallback: render after a small delay
+    setTimeout(() => renderAlimtokCanvas(), 500);
+  }
+}
+
 

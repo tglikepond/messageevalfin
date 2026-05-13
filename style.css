@@ -1667,3 +1667,87 @@ input[type="range"]::-webkit-slider-thumb {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== AlimTok Image Generator ===== */
+.alimtok-upload-area {
+  border: 2px dashed var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.alimtok-upload-area:hover {
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.03);
+}
+
+.alimtok-upload-area.has-image {
+  border-color: var(--accent-emerald);
+  border-style: solid;
+}
+
+.img-size-btn {
+  transition: all 0.2s !important;
+}
+
+.img-size-btn.active {
+  background: rgba(139, 92, 246, 0.15) !important;
+  border-color: var(--accent-purple) !important;
+  color: var(--accent-purple) !important;
+}
+
+.btn-img-generate {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  font-size: 15px;
+  padding: 14px 36px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.25);
+}
+
+.btn-img-generate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.4);
+}
+
+.btn-img-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-img-download {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  font-size: 15px;
+  padding: 14px 36px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25);
+}
+
+.btn-img-download:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
+}
+
+#imgGenCanvas {
+  background: #F9F9F9;
+}
