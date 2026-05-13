@@ -587,10 +587,11 @@
         <!-- 문구 입력 -->
         <div class="form-group">
           <label class="form-label">📝 이미지 내 문구 <span style="color:var(--accent-rose)">*</span></label>
-          <input class="form-input" id="imgGenText" placeholder="예: 후원자님 감사합니다" maxlength="20"
-            style="font-size:16px;font-weight:700;letter-spacing:0;">
+          <textarea class="form-input" id="imgGenText" placeholder="예: 후원자님&#10;감사합니다" maxlength="60"
+            rows="3"
+            style="font-size:16px;font-weight:700;letter-spacing:0;resize:none;min-height:auto;line-height:1.6;"></textarea>
           <div style="display:flex;justify-content:space-between;margin-top:6px;">
-            <p style="font-size:11px;color:var(--text-muted);">💡 최소 4자 ~ 최대 20자 (띄어쓰기 포함)</p>
+            <p style="font-size:11px;color:var(--text-muted);">💡 최대 3줄, 각 줄 최대 20자 (Enter로 줄바꿈)</p>
             <span id="imgTextCount" style="font-size:11px;color:var(--text-muted);">0 / 20</span>
           </div>
           <div id="imgTextError" style="display:none;font-size:11px;color:var(--accent-rose);margin-top:2px;"></div>
@@ -613,21 +614,7 @@
           </div>
         </div>
 
-        <!-- 이미지 크기 옵션 -->
-        <div class="form-group">
-          <label class="form-label">📏 이미지 배치 크기</label>
-          <div style="display:flex;gap:12px;margin-top:4px;">
-            <button type="button" class="btn btn-secondary img-size-btn active" id="imgSizeLarge"
-              onclick="setImgSize('large')" style="padding:8px 20px;font-size:13px;">
-              📐 큰 사이즈 (최대 400×320)
-            </button>
-            <button type="button" class="btn btn-secondary img-size-btn" id="imgSizeSmall"
-              onclick="setImgSize('small')" style="padding:8px 20px;font-size:13px;">
-              📐 작은 사이즈 (230×230)
-            </button>
-          </div>
-          <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">이미지 성격에 따라 배치 크기를 선택하세요.</p>
-        </div>
+
 
         <!-- 미리보기 캔버스 -->
         <div class="form-group">

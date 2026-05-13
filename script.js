@@ -116,7 +116,7 @@ Object.assign(window, {
   toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
   removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
   generateMessage, copyGeneratedMessage,
-  handleImgGenUpload, removeImgGenImage, setImgSize,
+  handleImgGenUpload, removeImgGenImage,
   generateAlimtokImage, downloadAlimtokImage
 });
 
@@ -1545,7 +1545,7 @@ function copyGeneratedMessage(index) {
 // ===== ALIMTOK IMAGE GENERATOR =====
 let imgGenImageData = null; // Base64 data URL of uploaded image
 let imgGenImageEl = null;   // HTMLImageElement for canvas drawing
-let imgGenSizeMode = 'large'; // 'large' (400x320) or 'small' (230x230)
+let imgGenSizeMode = 'small'; // Always 'small' (230x230)
 let imgGenGenerated = false;
 
 // Load font for canvas
@@ -1556,23 +1556,59 @@ function initImgGenTextInput() {
   if (!input) return;
   
   input.addEventListener('input', () => {
-    const len = input.value.length;
-    document.getElementById('imgTextCount').textContent = `${len} / 20`;
-    
+    const lines = input.value.split('\n');
     const errorEl = document.getElementById('imgTextError');
-    if (len > 0 && len < 4) {
+    let hasError = false;
+    
+    // Enforce max 3 lines
+    if (lines.length > 3) {
+      input.value = lines.slice(0, 3).join('\n');
+    }
+    
+    // Enforce max 20 chars per line
+    const currentLines = input.value.split('\n');
+    let corrected = false;
+    const fixedLines = currentLines.map(line => {
+      if (line.length > 20) {
+        corrected = true;
+        return line.slice(0, 20);
+      }
+      return line;
+    });
+    if (corrected) {
+      const cursorPos = input.selectionStart;
+      input.value = fixedLines.join('\n');
+      input.setSelectionRange(Math.min(cursorPos, input.value.length), Math.min(cursorPos, input.value.length));
+    }
+    
+    // Update character count (longest line)
+    const updatedLines = input.value.split('\n');
+    const maxLineLen = Math.max(...updatedLines.map(l => l.length));
+    document.getElementById('imgTextCount').textContent = `${updatedLines.length}줄 · 최대 ${maxLineLen}자`;
+    
+    // Validation
+    const totalLen = input.value.replace(/\n/g, '').length;
+    if (totalLen > 0 && totalLen < 2) {
       errorEl.style.display = 'block';
-      errorEl.textContent = '⚠️ 최소 4자 이상 입력해 주세요.';
-    } else if (len > 20) {
-      errorEl.style.display = 'block';
-      errorEl.textContent = '⚠️ 최대 20자까지만 입력 가능합니다.';
+      errorEl.textContent = '⚠️ 최소 2자 이상 입력해 주세요.';
+      hasError = true;
     } else {
       errorEl.style.display = 'none';
     }
     
     // Live preview update
-    if (len >= 4) {
+    if (totalLen >= 2) {
       renderAlimtokCanvas();
+    }
+  });
+  
+  // Prevent more than 3 lines via keydown
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const lines = input.value.split('\n');
+      if (lines.length >= 3) {
+        e.preventDefault();
+      }
     }
   });
 }
@@ -1646,17 +1682,6 @@ function removeImgGenImage() {
   renderAlimtokCanvas();
 }
 
-function setImgSize(size) {
-  imgGenSizeMode = size;
-  document.querySelectorAll('.img-size-btn').forEach(btn => btn.classList.remove('active'));
-  if (size === 'large') {
-    document.getElementById('imgSizeLarge').classList.add('active');
-  } else {
-    document.getElementById('imgSizeSmall').classList.add('active');
-  }
-  renderAlimtokCanvas();
-}
-
 function renderAlimtokCanvas() {
   const canvas = document.getElementById('imgGenCanvas');
   if (!canvas) return;
@@ -1667,7 +1692,7 @@ function renderAlimtokCanvas() {
   ctx.fillStyle = '#F9F9F9';
   ctx.fillRect(0, 0, 800, 400);
   
-  // Draw text (top-left)
+  // Draw text (top-left with 36px left, 42px top margin)
   const text = document.getElementById('imgGenText')?.value || '';
   if (text.length >= 1) {
     ctx.fillStyle = '#333333';
@@ -1675,25 +1700,33 @@ function renderAlimtokCanvas() {
     ctx.textBaseline = 'top';
     ctx.letterSpacing = '0px';
     
-    // Text position: top-left with padding
-    const textX = 40;
-    const textY = 40;
+    // Text position: 36px left, 42px top
+    const textX = 36;
+    const textY = 42;
     const lineHeight = 74;
     
-    // Word wrap - split by character groups if line is too long
-    // Max width for text area depends on whether image is present
+    // Split by actual newlines from textarea, then wrap each line if needed
     const maxTextWidth = imgGenImageEl ? 360 : 720;
+    const inputLines = text.split('\n').slice(0, 3); // Max 3 lines
+    let drawLineIdx = 0;
     
-    const lines = wrapText(ctx, text, maxTextWidth);
-    lines.forEach((line, i) => {
-      ctx.fillText(line, textX, textY + (i * lineHeight));
+    inputLines.forEach((inputLine) => {
+      if (inputLine.length === 0) {
+        drawLineIdx++;
+        return;
+      }
+      const wrappedLines = wrapText(ctx, inputLine, maxTextWidth);
+      wrappedLines.forEach((line) => {
+        ctx.fillText(line, textX, textY + (drawLineIdx * lineHeight));
+        drawLineIdx++;
+      });
     });
   }
   
-  // Draw uploaded image (bottom-right)
+  // Draw uploaded image (bottom-right with 20px right, 16px bottom margin)
   if (imgGenImageEl) {
-    const maxW = imgGenSizeMode === 'large' ? 400 : 230;
-    const maxH = imgGenSizeMode === 'large' ? 320 : 230;
+    const maxW = 230; // Always small size
+    const maxH = 230;
     
     // Calculate fitted dimensions maintaining aspect ratio
     let drawW = imgGenImageEl.naturalWidth;
@@ -1706,9 +1739,9 @@ function renderAlimtokCanvas() {
     drawW = Math.round(drawW * scale);
     drawH = Math.round(drawH * scale);
     
-    // Position at bottom-right
-    const imgX = 800 - drawW;
-    const imgY = 400 - drawH;
+    // Position at bottom-right with 20px right margin, 16px bottom margin
+    const imgX = 800 - drawW - 20;
+    const imgY = 400 - drawH - 16;
     
     ctx.drawImage(imgGenImageEl, imgX, imgY, drawW, drawH);
   }
@@ -1737,14 +1770,16 @@ function wrapText(ctx, text, maxWidth) {
 function generateAlimtokImage() {
   const text = document.getElementById('imgGenText')?.value || '';
   
-  // Validate text length
-  if (text.length < 4) {
-    showToast('⚠️ 문구를 최소 4자 이상 입력해 주세요.');
+  // Validate text
+  const totalLen = text.replace(/\n/g, '').length;
+  if (totalLen < 2) {
+    showToast('⚠️ 문구를 최소 2자 이상 입력해 주세요.');
     document.getElementById('imgGenText')?.focus();
     return;
   }
-  if (text.length > 20) {
-    showToast('⚠️ 문구는 최대 20자까지만 입력 가능합니다.');
+  const lines = text.split('\n');
+  if (lines.length > 3) {
+    showToast('⚠️ 문구는 최대 3줄까지만 입력 가능합니다.');
     return;
   }
   
