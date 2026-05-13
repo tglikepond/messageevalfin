@@ -50,6 +50,13 @@
           <button class="nav-tab dashboard-tab active" data-tab="overview">📈 성과 개요</button>
         </div>
       </div>
+      <div class="nav-divider"></div>
+      <div>
+        <div class="nav-section-label">✨ AI 도구</div>
+        <div class="nav-tabs">
+          <button class="nav-tab generate-tab" data-tab="generate">✨ 메시지 생성</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -94,10 +101,12 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">실제 오픈율 (%)</label>
-            <input class="form-input" type="number" id="actualOpenRate" placeholder="예: 32.5" min="0" max="100" step="0.1">
+            <input class="form-input" type="number" id="actualOpenRate" placeholder="예: 32.5" min="0" max="100"
+              step="0.1">
           </div>
           <div class="form-group"><label class="form-label">실제 전환율 (%)</label>
-            <input class="form-input" type="number" id="actualConvertRate" placeholder="예: 8.7" min="0" max="100" step="0.1">
+            <input class="form-input" type="number" id="actualConvertRate" placeholder="예: 8.7" min="0" max="100"
+              step="0.1">
           </div>
         </div>
       </div>
@@ -115,7 +124,8 @@
           <div id="apiKeyMsg"
             style="padding:12px 16px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:var(--radius-md);margin-bottom:8px;">
             <span style="font-size:13px;color:var(--accent-purple);font-weight:600;">🔑 Gemini API 키</span>
-            <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:8px;">API 키는 브라우저(localStorage)에만 저장되며, 소스코드에 포함되지 않아 안전합니다.</p>
+            <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:8px;">API 키는
+              브라우저(localStorage)에만 저장되며, 소스코드에 포함되지 않아 안전합니다.</p>
             <div style="display:flex;gap:8px;align-items:center;">
               <input class="form-input" id="localApiKey" type="password" placeholder="Gemini API Key 입력 (AIza...)"
                 style="flex:1;font-size:13px;">
@@ -124,7 +134,8 @@
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
               <p style="font-size:11px;color:var(--text-muted);margin:0;">
-                💡 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-blue);">Google AI Studio</a>에서 무료 API 키를 발급받을 수 있습니다.
+                💡 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-blue);">Google
+                  AI Studio</a>에서 무료 API 키를 발급받을 수 있습니다.
               </p>
               <span id="apiKeyStatus" style="font-size:11px;color:var(--text-muted);"></span>
             </div>
@@ -145,8 +156,7 @@
           <input type="file" id="aiFileInput" accept="image/*" style="display:none"
             onchange="handleAiImageUpload(event)">
         </div>
-        <div class="form-group"><label class="form-label">메시지 본문 <span
-              style="color:var(--accent-rose)">*</span></label>
+        <div class="form-group"><label class="form-label">메시지 본문 <span style="color:var(--accent-rose)">*</span></label>
           <textarea class="form-textarea" id="aiMsgBody" style="min-height:150px;"
             placeholder="평가할 메시지 전체 내용을 붙여넣기 하세요..."></textarea>
         </div>
@@ -167,10 +177,12 @@
             <div class="cta-link-row" data-index="0" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
               <span style="font-size:12px;color:var(--accent-purple);font-weight:700;min-width:20px;">①</span>
               <input class="form-input cta-btn-name" placeholder="버튼명 (예: 지금 구매하기)" style="flex:1;font-size:13px;">
-              <input class="form-input cta-link-url" placeholder="링크 URL (예: https://example.com/event)" style="flex:2;font-size:13px;">
+              <input class="form-input cta-link-url" placeholder="링크 URL (예: https://example.com/event)"
+                style="flex:2;font-size:13px;">
             </div>
           </div>
-          <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">메시지에 포함된 클릭 유도 버튼과 연결 링크를 입력하세요. 없으면 모두 삭제해도 됩니다.</p>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">메시지에 포함된 클릭 유도 버튼과 연결 링크를 입력하세요. 없으면 모두 삭제해도
+            됩니다.</p>
         </div>
       </div>
 
@@ -184,11 +196,16 @@
         <div class="form-group">
           <label class="form-label">피드백 데이터 유무</label>
           <div style="display:flex;gap:12px;margin-top:4px;">
-            <button type="button" class="btn btn-secondary feedback-toggle-btn" id="fbToggleYes" onclick="toggleFeedback(true)" style="padding:8px 24px;font-size:14px;">✅ 있음</button>
-            <button type="button" class="btn btn-secondary feedback-toggle-btn active" id="fbToggleNo" onclick="toggleFeedback(false)" style="padding:8px 24px;font-size:14px;background:rgba(139,92,246,0.15);border-color:var(--accent-purple);color:var(--accent-purple);">❌ 없음</button>
+            <button type="button" class="btn btn-secondary feedback-toggle-btn" id="fbToggleYes"
+              onclick="toggleFeedback(true)" style="padding:8px 24px;font-size:14px;">✅ 있음</button>
+            <button type="button" class="btn btn-secondary feedback-toggle-btn active" id="fbToggleNo"
+              onclick="toggleFeedback(false)"
+              style="padding:8px 24px;font-size:14px;background:rgba(139,92,246,0.15);border-color:var(--accent-purple);color:var(--accent-purple);">❌
+              없음</button>
           </div>
         </div>
-        <div id="feedbackFields" style="display:none;max-width:700px;margin-top:12px;padding-top:16px;border-top:1px solid var(--border-glass);">
+        <div id="feedbackFields"
+          style="display:none;max-width:700px;margin-top:12px;padding-top:16px;border-top:1px solid var(--border-glass);">
           <div class="form-group"><label class="form-label">고객 별점 (1~5점)</label>
             <div class="feedback-stars" id="feedbackStars">
               <button class="feedback-star" data-value="1">★</button><button class="feedback-star"
@@ -256,8 +273,11 @@
       <!-- 버튼 그룹 -->
       <div class="btn-group">
         <button class="btn btn-ai" id="aiRunBtn" onclick="runAiAndSave()">🤖 AI 분석 실행 및 저장</button>
-        <button class="btn btn-primary" id="showResultBtn" onclick="saveAndShowResult()" disabled style="opacity:0.5;cursor:not-allowed;">📊 저장 후 종합 결과 보기</button>
-        <p id="resultBtnHint" style="font-size:12px;color:var(--text-muted);text-align:center;width:100%;margin-top:-4px;">💡 AI 분석을 먼저 실행해야 종합 결과를 볼 수 있습니다.</p>
+        <button class="btn btn-primary" id="showResultBtn" onclick="saveAndShowResult()" disabled
+          style="opacity:0.5;cursor:not-allowed;">📊 저장 후 종합 결과 보기</button>
+        <p id="resultBtnHint"
+          style="font-size:12px;color:var(--text-muted);text-align:center;width:100%;margin-top:-4px;">💡 AI 분석을 먼저 실행해야
+          종합 결과를 볼 수 있습니다.</p>
       </div>
     </div>
 
@@ -330,7 +350,8 @@
 
         <!-- 정량 지표 카드 -->
         <div id="resultMsgStatsSection" style="display:none;margin-top:16px;">
-          <div style="padding:16px 20px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-md);">
+          <div
+            style="padding:16px 20px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-md);">
             <h4 style="margin-bottom:12px;font-size:14px;color:var(--text-primary);">📐 메시지 정량 지표</h4>
             <div class="stats-row" id="resultMsgStats" style="margin-bottom:0;"></div>
           </div>
@@ -472,6 +493,90 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 메시지 생성 (AI 문안 생성기) ========== -->
+    <div class="tab-panel" id="tab-generate">
+      <div class="generate-hero">
+        <h2>✨ AI 카카오톡 알림톡 문안 생성기</h2>
+        <p>서비스 종류와 내용을 입력하면 AI가 3가지 유형의 메시지 문안을 자동으로 생성합니다.</p>
+      </div>
+
+      <!-- API 키 안내 -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-emerald">🔑</div>API 키 설정
+          </div>
+        </div>
+        <div id="genApiKeyMsg"
+          style="padding:12px 16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-md);">
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">캠페인 정보 탭에서 입력한 Gemini API 키가
+            자동으로 사용됩니다.</p>
+          <p style="font-size:11px;color:var(--text-muted);">💡 키가 없다면 <a
+              href="https://aistudio.google.com/apikey" target="_blank"
+              style="color:var(--accent-emerald);">Google AI Studio</a>에서 무료 발급받으세요.</p>
+        </div>
+      </div>
+
+      <!-- 입력 영역 -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-emerald">📝</div>메시지 정보 입력
+          </div>
+          <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);">초록우산 전용</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">서비스 종류 <span style="color:var(--accent-rose)">*</span></label>
+            <select class="form-select" id="genServiceType">
+              <option value="">서비스를 선택하세요</option>
+              <option value="feedback">📋 피드백/결과보고</option>
+              <option value="benefit">🎁 혜택/참여활동</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 서비스 설명 카드 -->
+        <div id="genServiceDesc" style="display:none;margin-bottom:16px;">
+          <div class="gen-service-info" id="genServiceInfo"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">보내고자 하는 내용 <span style="color:var(--accent-rose)">*</span></label>
+          <textarea class="form-textarea" id="genContent" style="min-height:160px;"
+            placeholder="보내고자 하는 메시지의 핵심 내용을 자유롭게 작성해 주세요.&#10;&#10;예시 (피드백/결과보고):&#10;지난해 초록우산은 3,086명의 자립준비 청년에게 멘토링 프로그램을 지원했고, 참여 청년의 90% 이상이 자립 의지를 보여줬습니다.&#10;&#10;예시 (혜택/참여활동):&#10;3월 후원자 전용 문화 혜택으로 뮤지컬, 연극, 전시 등 다양한 공연을 제공합니다."></textarea>
+        </div>
+
+        <div class="btn-group" style="justify-content:center;">
+          <button class="btn btn-generate" id="genRunBtn" onclick="generateMessage()">
+            ✨ AI 문안 생성하기
+          </button>
+        </div>
+      </div>
+
+      <!-- 생성 결과 영역 -->
+      <div id="genResultSection" style="display:none;">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">
+              <div class="icon icon-emerald">🤖</div>AI 생성 결과
+            </div>
+            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);" id="genResultBadge">Powered by Gemini</span>
+          </div>
+
+          <!-- 로딩 -->
+          <div class="ai-loading" id="genLoading" style="display:none;">
+            <div class="ai-spinner" style="border-top-color:var(--accent-emerald);"></div>
+            <div class="ai-loading-text">AI가 3가지 유형의 문안을 생성하고 있습니다...</div>
+          </div>
+
+          <!-- 유형 카드 3개 -->
+          <div id="genResultCards" class="gen-result-grid"></div>
         </div>
       </div>
     </div>
