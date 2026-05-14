@@ -56,6 +56,7 @@
         <div class="nav-section-label">✨ AI 도구</div>
         <div class="nav-tabs">
           <button class="nav-tab generate-tab" data-tab="generate">✨ 메시지 생성</button>
+          <button class="nav-tab imggen-tab" data-tab="imggen">🖼️ 이미지 생성</button>
         </div>
       </div>
     </div>
@@ -568,11 +569,41 @@
         </div>
       </div>
 
-      <!-- ===== 알림톡 이미지 생성기 ===== -->
+
+
+      <!-- 생성 결과 영역 -->
+      <div id="genResultSection" style="display:none;">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">
+              <div class="icon icon-emerald">🤖</div>AI 생성 결과
+            </div>
+            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);" id="genResultBadge">Powered by Gemini</span>
+          </div>
+
+          <!-- 로딩 -->
+          <div class="ai-loading" id="genLoading" style="display:none;">
+            <div class="ai-spinner" style="border-top-color:var(--accent-emerald);"></div>
+            <div class="ai-loading-text">AI가 3가지 유형의 문안을 생성하고 있습니다...</div>
+          </div>
+
+          <!-- 유형 카드 3개 -->
+          <div id="genResultCards" class="gen-result-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 알림톡 이미지 생성기 (별도 탭) ========== -->
+    <div class="tab-panel" id="tab-imggen">
+      <div class="imggen-hero">
+        <h2>🖼️ 알림톡 이미지 생성기</h2>
+        <p>카카오톡 알림톡에 사용할 800×400px 규격 이미지를 간편하게 제작합니다.</p>
+      </div>
+
       <div class="section">
         <div class="section-header">
           <div class="section-title">
-            <div class="icon icon-purple">🖼️</div>알림톡 이미지 생성기
+            <div class="icon icon-purple">🖼️</div>이미지 구성
           </div>
           <span class="section-badge" style="background:rgba(139,92,246,0.1);color:var(--accent-purple);">800×400 규격</span>
         </div>
@@ -580,7 +611,7 @@
         <div style="padding:10px 14px;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.12);border-radius:var(--radius-md);margin-bottom:16px;">
           <p style="font-size:12px;color:var(--text-secondary);line-height:1.7;">
             📐 알림톡에 사용될 <strong style="color:var(--text-primary);">800×400px</strong> 규격 이미지를 생성합니다.<br>
-            문구와 이미지를 입력하면 규격에 맞게 자동으로 배치됩니다. <span style="color:var(--text-muted);">(선택사항)</span>
+            문구와 이미지를 입력하면 규격에 맞게 자동으로 배치됩니다.
           </p>
         </div>
 
@@ -614,8 +645,6 @@
           </div>
         </div>
 
-
-
         <!-- 미리보기 캔버스 -->
         <div class="form-group">
           <label class="form-label">👁️ 미리보기</label>
@@ -632,27 +661,6 @@
           <button class="btn btn-img-download" id="imgDownloadBtn" onclick="downloadAlimtokImage()" style="display:none;">
             📥 PNG 다운로드
           </button>
-        </div>
-      </div>
-
-      <!-- 생성 결과 영역 -->
-      <div id="genResultSection" style="display:none;">
-        <div class="section">
-          <div class="section-header">
-            <div class="section-title">
-              <div class="icon icon-emerald">🤖</div>AI 생성 결과
-            </div>
-            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);" id="genResultBadge">Powered by Gemini</span>
-          </div>
-
-          <!-- 로딩 -->
-          <div class="ai-loading" id="genLoading" style="display:none;">
-            <div class="ai-spinner" style="border-top-color:var(--accent-emerald);"></div>
-            <div class="ai-loading-text">AI가 3가지 유형의 문안을 생성하고 있습니다...</div>
-          </div>
-
-          <!-- 유형 카드 3개 -->
-          <div id="genResultCards" class="gen-result-grid"></div>
         </div>
       </div>
     </div>
