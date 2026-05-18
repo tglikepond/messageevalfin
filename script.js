@@ -1708,7 +1708,7 @@ function renderAlimtokCanvas() {
     // Text width limit: full canvas width minus left/right margins (36px each)
     // Text is always rendered exactly as the user typed it.
     // Auto-wrap only occurs when a single line exceeds this width limit.
-    const maxTextWidth = 800 - 36 - 36; // 728px
+    const maxTextWidth = 520; // 좌측 여백 36px 제외한 텍스트 영역 제한
     const inputLines = text.split('\n').slice(0, 3); // Max 3 lines
     let drawLineIdx = 0;
     
