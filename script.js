@@ -1705,8 +1705,10 @@ function renderAlimtokCanvas() {
     const textY = 42;
     const lineHeight = 74;
     
-    // Split by actual newlines from textarea, then wrap each line if needed
-    const maxTextWidth = imgGenImageEl ? 360 : 720;
+    // Text width limit: full canvas width minus left/right margins (36px each)
+    // Text is always rendered exactly as the user typed it.
+    // Auto-wrap only occurs when a single line exceeds this width limit.
+    const maxTextWidth = 800 - 36 - 36; // 728px
     const inputLines = text.split('\n').slice(0, 3); // Max 3 lines
     let drawLineIdx = 0;
     
