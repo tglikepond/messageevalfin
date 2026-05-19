@@ -518,7 +518,8 @@ function refreshOverview() {
 // ===== Utility =====
 function startNewEval() { currentCampaignId = null; aiScores = {}; aiImprovements = {}; aiRecommendations = []; selectedCampaignCache = null; aiCompleted = false; resetAll(); switchTab('campaign'); }
 function resetAll() {
-  ['campaignName', 'sendDate', 'sendTime', 'sendRecipients', 'targetSegment', 'actualOpenRate', 'actualConvertRate', 'aiMsgBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['campaignName', 'sendDate', 'sendRecipients', 'targetSegment', 'actualOpenRate', 'actualConvertRate', 'aiMsgBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('sendTime').value = '09:00';
   feedbackRating = 0; setStars(0); document.getElementById('starLabel').textContent = '별점을 선택해 주세요';
   ['fbRelevance', 'fbWillingness'].forEach(id => { document.getElementById(id).value = 5; });
   ['fbRelVal', 'fbWillVal'].forEach(id => { document.getElementById(id).textContent = '5'; });
