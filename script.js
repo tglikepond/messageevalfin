@@ -1693,7 +1693,7 @@ function renderAlimtokCanvas() {
   ctx.fillStyle = '#F9F9F9';
   ctx.fillRect(0, 0, 800, 400);
   
-  // Draw text (top-left with 30px left, 34px top margin)
+  // Draw text (top-left with 36px left, 42px top margin) — Photoshop 기준
   const text = document.getElementById('imgGenText')?.value || '';
   if (text.length >= 1) {
     ctx.fillStyle = '#333333';
@@ -1702,9 +1702,9 @@ function renderAlimtokCanvas() {
     ctx.textAlign = 'left';
     ctx.letterSpacing = '0px';
     
-    // Text position: 30px left, 34px top
-    const textX = 30;
-    const textY = 34;
+    // Text position: 36px left, 42px top (Photoshop 기준)
+    const textX = 36;
+    const textY = 42;
     const lineHeight = 74;
     
     // Text width limit: full canvas width minus left/right margins (36px each)
@@ -1727,7 +1727,7 @@ function renderAlimtokCanvas() {
     });
   }
   
-  // Draw uploaded image (bottom-right with 10px right, 6px bottom margin)
+  // Draw uploaded image (bottom-right with 20px right, 16px bottom margin) — Photoshop 기준
   if (imgGenImageEl) {
     const maxW = 230; // Always small size
     const maxH = 230;
@@ -1743,9 +1743,9 @@ function renderAlimtokCanvas() {
     drawW = Math.round(drawW * scale);
     drawH = Math.round(drawH * scale);
     
-    // Position at bottom-right with 10px right margin, 6px bottom margin
-    const imgX = 800 - drawW - 10;
-    const imgY = 400 - drawH - 6;
+    // Position at bottom-right with 20px right margin, 16px bottom margin (Photoshop 기준)
+    const imgX = 800 - drawW - 20;
+    const imgY = 400 - drawH - 16;
     
     ctx.drawImage(imgGenImageEl, imgX, imgY, drawW, drawH);
   }
