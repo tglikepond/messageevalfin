@@ -1697,7 +1697,7 @@ function renderAlimtokCanvas() {
   const text = document.getElementById('imgGenText')?.value || '';
   if (text.length >= 1) {
     ctx.fillStyle = '#333333';
-    ctx.font = `54px ${CANVAS_FONT_FAMILY}`;
+    ctx.font = `bold 54px ${CANVAS_FONT_FAMILY}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     ctx.letterSpacing = '0px';
@@ -1825,7 +1825,7 @@ function initImgGen() {
   
   // Preload font for canvas rendering
   if (document.fonts) {
-    document.fonts.load('54px "Spoqa Han Sans Neo"').then(() => {
+    document.fonts.load('bold 54px "Spoqa Han Sans Neo"').then(() => {
       renderAlimtokCanvas();
     }).catch(() => {
       renderAlimtokCanvas();
