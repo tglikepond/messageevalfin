@@ -1699,6 +1699,7 @@ function renderAlimtokCanvas() {
     ctx.fillStyle = '#333333';
     ctx.font = `bold 54px ${CANVAS_FONT_FAMILY}`;
     ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
     ctx.letterSpacing = '0px';
     
     // Text position: 36px left, 42px top
