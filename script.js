@@ -1743,9 +1743,9 @@ function renderAlimtokCanvas() {
     drawW = Math.round(drawW * scale);
     drawH = Math.round(drawH * scale);
     
-    // Position at bottom-right with 20px right margin, 16px bottom margin (Photoshop 기준)
+    // Position at bottom-right with 20px right margin, 30px bottom margin (Photoshop 기준)
     const imgX = 800 - drawW - 20;
-    const imgY = 400 - drawH - 16;
+    const imgY = 400 - drawH - 30;
     
     ctx.drawImage(imgGenImageEl, imgX, imgY, drawW, drawH);
   }
