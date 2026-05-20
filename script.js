@@ -1729,8 +1729,8 @@ function renderAlimtokCanvas() {
   
   // Draw uploaded image (bottom-right with 20px right, 16px bottom margin) — Photoshop 기준
   if (imgGenImageEl) {
-    const maxW = 230; // Always small size
-    const maxH = 230;
+    const maxW = 210;
+    const maxH = 210;
     
     // Calculate fitted dimensions maintaining aspect ratio
     let drawW = imgGenImageEl.naturalWidth;
