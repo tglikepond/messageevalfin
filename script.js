@@ -1702,9 +1702,9 @@ function renderAlimtokCanvas() {
     ctx.textAlign = 'left';
     ctx.letterSpacing = '0px';
     
-    // Text position: 36px left, 42px top (Photoshop 기준)
+    // Text position: 36px left, 42px top (Photoshop 기준, Canvas 보정값 +6px)
     const textX = 36;
-    const textY = 42;
+    const textY = 48;
     const lineHeight = 74;
     
     // Text width limit: full canvas width minus left/right margins (36px each)
