@@ -1014,10 +1014,11 @@ async function runAiEvaluation() {
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
   document.getElementById('aiResultSection').style.display = 'block'; document.getElementById('aiLoading').style.display = 'flex';
   document.getElementById('aiResultCard').style.display = 'none'; document.getElementById('aiScoreSummary').style.display = 'none';
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-001'];
+  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
   try {
     const parts = [{ text: buildAiPrompt() }]; if (aiImageBase64) parts.push({ inline_data: { mime_type: aiImageMimeType, data: aiImageBase64 } });
     let text = null, usedModel = '';
+    let lastError = null;
     for (const model of models) {
       try {
         document.querySelector('.ai-loading-text').textContent = `${model} 모델로 분석 중...`;
@@ -1027,17 +1028,30 @@ async function runAiEvaluation() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
         });
-        if (res.ok) { const data = await res.json(); text = data.candidates?.[0]?.content?.parts?.[0]?.text; if (text) { usedModel = model; break; } }
-        else {
+        if (res.ok) { 
+          const data = await res.json(); 
+          text = data.candidates?.[0]?.content?.parts?.[0]?.text; 
+          if (text) { usedModel = model; break; } 
+        } else {
           const errData = await res.json().catch(() => ({}));
           console.warn(`${model} failed:`, errData.error || res.status);
-          if (res.status === 400) { throw new Error(errData.error?.message || '잘못된 요청입니다. API 키를 확인해 주세요.'); }
-          if (res.status === 401 || res.status === 403) { throw new Error('API 키가 유효하지 않습니다. 올바른 Gemini API 키를 입력해 주세요.'); }
-          if (res.status !== 429 && res.status !== 503) throw new Error(errData.error?.message || `API 오류 (${res.status})`);
+          const errMsg = errData.error?.message || `API 오류 (${res.status})`;
+          if (res.status === 401 || res.status === 403) { 
+            throw new Error('API 키가 유효하지 않습니다. 올바른 Gemini API 키를 입력해 주세요.'); 
+          }
+          throw new Error(errMsg);
         }
-      } catch (modelErr) { if (modelErr.message && !modelErr.message.includes('429') && !modelErr.message.includes('503') && !modelErr.message.includes('quota')) throw modelErr; console.warn(`${model} 실패, 다음 모델...`); }
+      } catch (modelErr) {
+        lastError = modelErr;
+        if (modelErr.message && (modelErr.message.includes('API 키') || modelErr.message.includes('401') || modelErr.message.includes('403'))) {
+          throw modelErr;
+        }
+        console.warn(`${model} 실패, 다음 모델 시도... 요인:`, modelErr.message);
+      }
     }
-    if (!text) throw new Error('모든 모델 할당량 초과. 잠시 후 다시 시도해 주세요.');
+    if (!text) {
+      throw new Error(`AI 분석 호출에 실패했습니다. (마지막 오류: ${lastError ? lastError.message : '알 수 없음'})`);
+    }
     const jsonBlocks = [...text.matchAll(/```json\s*\n?([\s\S]*?)\n?\s*```/g)];
     if (jsonBlocks.length >= 1) { try { const parsed = JSON.parse(jsonBlocks[0][1]); aiScores = {}; aiEvalItems.forEach(item => { aiScores[item.id] = Math.max(1, Math.min(10, parseInt(parsed[item.id]) || 5)); }); renderAiScoreGrid(); document.getElementById('aiScoreSummary').style.display = 'block'; } catch (e) { console.warn('score parse fail', e); } }
     if (jsonBlocks.length >= 2) { try { const parsedImps = JSON.parse(jsonBlocks[1][1]); aiImprovements = {}; aiEvalItems.forEach(item => { if (parsedImps[item.id]) aiImprovements[item.id] = parsedImps[item.id]; }); } catch (e) { console.warn('improvements parse fail', e); } }
@@ -1437,10 +1451,11 @@ async function generateMessage() {
   const prompt = buildGeneratePrompt(serviceType, content, msgLength);
   
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-001'];
+  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
 
   try {
     let text = null, usedModel = '';
+    let lastError = null;
     for (const model of models) {
       try {
         document.querySelector('#genLoading .ai-loading-text').textContent = `${model} 모델로 생성 중...`;
@@ -1464,16 +1479,23 @@ async function generateMessage() {
         } else {
           const errData = await res.json().catch(() => ({}));
           console.warn(`${model} failed:`, errData.error || res.status);
-          if (res.status === 400) throw new Error(errData.error?.message || '잘못된 요청입니다.');
-          if (res.status === 401 || res.status === 403) throw new Error('API 키가 유효하지 않습니다.');
-          if (res.status !== 429 && res.status !== 503) throw new Error(errData.error?.message || `API 오류 (${res.status})`);
+          const errMsg = errData.error?.message || `API 오류 (${res.status})`;
+          if (res.status === 401 || res.status === 403) {
+            throw new Error('API 키가 유효하지 않습니다.');
+          }
+          throw new Error(errMsg);
         }
       } catch (modelErr) {
-        if (modelErr.message && !modelErr.message.includes('429') && !modelErr.message.includes('503') && !modelErr.message.includes('quota')) throw modelErr;
-        console.warn(`${model} 실패, 다음 모델...`);
+        lastError = modelErr;
+        if (modelErr.message && (modelErr.message.includes('API 키') || modelErr.message.includes('401') || modelErr.message.includes('403'))) {
+          throw modelErr;
+        }
+        console.warn(`${model} 실패, 다음 모델 시도... 요인:`, modelErr.message);
       }
     }
-    if (!text) throw new Error('모든 모델 할당량 초과. 잠시 후 다시 시도해 주세요.');
+    if (!text) {
+      throw new Error(`AI 문안 생성 호출에 실패했습니다. (마지막 오류: ${lastError ? lastError.message : '알 수 없음'})`);
+    }
 
     // Parse JSON from response robustly
     let messages = null;
