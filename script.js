@@ -1014,7 +1014,7 @@ async function runAiEvaluation() {
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
   document.getElementById('aiResultSection').style.display = 'block'; document.getElementById('aiLoading').style.display = 'flex';
   document.getElementById('aiResultCard').style.display = 'none'; document.getElementById('aiScoreSummary').style.display = 'none';
-  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
   try {
     const parts = [{ text: buildAiPrompt() }]; if (aiImageBase64) parts.push({ inline_data: { mime_type: aiImageMimeType, data: aiImageBase64 } });
     let text = null, usedModel = '';
@@ -1451,7 +1451,7 @@ async function generateMessage() {
   const prompt = buildGeneratePrompt(serviceType, content, msgLength);
   
 
-  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
 
   try {
     let text = null, usedModel = '';
