@@ -1233,6 +1233,7 @@ ${referenceNotice}
 - 특징: "3,086명", "90% 이상", "전년 대비 15% 증가" 등 구체적 숫자 강조
 - 톤: 신뢰감 있고 담백하며 팩트 중심
 - 오프닝 예시: 수치를 활용한 질문형 ("~을 알고 계시나요?")
+- **매우 중요 수치 규칙**: 만약 사용자가 작성한 '보내고자 하는 내용'에 구체적인 숫자가 없거나 부족하여 AI가 자체적으로 새로운 수치적 정보(통계, 데이터 등)를 지어내거나 추가하여 문안을 작성할 경우, 해당 숫자는 절대로 구체적인 숫자로 표기하지 말고 반드시 '**XX**'(예: **XX명**, **XX%**, **전년 대비 XX% 증가**, **지원금 XX원** 등)으로 표시하여 출력하세요. 사용자가 입력한 내용에 이미 명시되어 있는 숫자는 그대로 노출해야 합니다. 지어낸 임의의 숫자를 구체적으로 적지 마세요.
 
 ## 유형 2: 감정터치중심형
 - 핵심: 수혜 아동/청년의 실제 이야기나 감정을 생생하게 전달하여 공감 유도
@@ -1309,21 +1310,24 @@ OOO 후원자님, 서둘러주세요! 3월 특별 문화 혜택 예매가 곧 �
     "opening": "1) 오프닝 텍스트",
     "topic": "2) 화제 제기 텍스트",
     "content": "3) 실제 내용 및 제안 텍스트",
-    "cta": "4) 행동 촉구 텍스트"
+    "cta": "4) 행동 촉구 텍스트",
+    "description": "문안 생성 시 중점을 둔 핵심 사항(타겟 소구점, 카피라이팅 기법 등)에 대한 간략한 설명 (1~2문장)"
   },
   {
     "typeName": "유형 이름",
     "opening": "오프닝 텍스트",
     "topic": "화제 제기 텍스트",
     "content": "실제 내용 및 제안 텍스트",
-    "cta": "행동 촉구 텍스트"
+    "cta": "행동 촉구 텍스트",
+    "description": "생성 시 중점을 둔 점 설명"
   },
   {
     "typeName": "유형 이름",
     "opening": "오프닝 텍스트",
     "topic": "화제 제기 텍스트",
     "content": "실제 내용 및 제안 텍스트",
-    "cta": "행동 촉구 텍스트"
+    "cta": "행동 촉구 텍스트",
+    "description": "생성 시 중점을 둔 점 설명"
   }
 ]
 \`\`\`
@@ -1507,6 +1511,13 @@ function renderGenerateResults(messages, serviceType) {
             <div class="gen-section-label cta">4) 행동 촉구</div>
             <div class="gen-msg-text">${escapeHtml(msg.cta || '')}</div>
           </div>
+          ${msg.description ? `
+          <div class="gen-msg-desc-section" style="margin-top:16px; padding-top:12px; border-top:1px dashed rgba(255,255,255,0.08);">
+            <div class="gen-section-label" style="color:var(--accent-purple); font-size:11px; margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+              💡 작성 주안점 및 코멘트
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary); line-height:1.5;">${escapeHtml(msg.description)}</div>
+          </div>` : ''}
         </div>
         <div class="gen-card-footer">
           <button class="gen-copy-btn" onclick="copyGeneratedMessage(${i})" id="genCopyBtn${i}">
