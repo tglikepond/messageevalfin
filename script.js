@@ -189,22 +189,6 @@ function initAll() {
   initImgGen();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAll);
-} else {
-  initAll();
-}
-
-// ===== Window bindings for HTML onclick handlers =====
-Object.assign(window, {
-  switchTab, saveAndShowResult, runAiAndSave, loadCampaignResult,
-  deleteCampaign, openModal, closeModal, exportReport, startNewEval,
-  toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
-  removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
-  generateMessage, copyGeneratedMessage, copyLastPrompt,
-  handleImgGenUpload, removeImgGenImage,
-  generateAlimtokImage, downloadAlimtokImage
-});
 
 function updateBadge() { document.getElementById('savedCountBadge').textContent = `📊 저장된 평가: ${campaignsCache.length}건`; }
 
@@ -2234,4 +2218,23 @@ function initImgGen() {
     setTimeout(() => renderAlimtokCanvas(), 500);
   }
 }
+
+// ===== Window bindings for HTML onclick handlers =====
+Object.assign(window, {
+  switchTab, saveAndShowResult, runAiAndSave, loadCampaignResult,
+  deleteCampaign, openModal, closeModal, exportReport, startNewEval,
+  toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
+  removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
+  generateMessage, copyGeneratedMessage, copyLastPrompt,
+  handleImgGenUpload, removeImgGenImage,
+  generateAlimtokImage, downloadAlimtokImage
+});
+
+// ===== Start execution =====
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAll);
+} else {
+  initAll();
+}
+
 
