@@ -1413,7 +1413,11 @@ async function generateMessage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.9, maxOutputTokens: 4096 }
+            generationConfig: { 
+              temperature: 0.9, 
+              maxOutputTokens: 4096,
+              responseMimeType: "application/json"
+            }
           })
         });
         if (res.ok) {
@@ -1434,11 +1438,38 @@ async function generateMessage() {
     }
     if (!text) throw new Error('모든 모델 할당량 초과. 잠시 후 다시 시도해 주세요.');
 
-    // Parse JSON from response
-    const jsonMatch = text.match(/```json\s*\n?([\s\S]*?)\n?\s*```/);
-    if (!jsonMatch) throw new Error('AI 응답에서 문안을 파싱할 수 없습니다. 다시 시도해 주세요.');
+    // Parse JSON from response robustly
+    let messages = null;
+    const trimmedText = text.trim();
+    
+    try {
+      messages = JSON.parse(trimmedText);
+    } catch (e) {
+      // Fallback 1: Extract from markdown code blocks
+      const jsonMatch = trimmedText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/i);
+      if (jsonMatch) {
+        try {
+          messages = JSON.parse(jsonMatch[1].trim());
+        } catch (e2) {
+          console.warn("Markdown block JSON parse failed:", e2);
+        }
+      }
+      
+      // Fallback 2: Extract using bracket indices
+      if (!messages) {
+        const firstBracket = trimmedText.indexOf('[');
+        const lastBracket = trimmedText.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+          try {
+            messages = JSON.parse(trimmedText.slice(firstBracket, lastBracket + 1));
+          } catch (e3) {
+            console.warn("Bracket index JSON parse failed:", e3);
+          }
+        }
+      }
+    }
 
-    const messages = JSON.parse(jsonMatch[1]);
+    if (!messages) throw new Error('AI 응답에서 문안을 파싱할 수 없습니다. 다시 시도해 주세요.');
     if (!Array.isArray(messages) || messages.length < 3) throw new Error('3가지 문안이 모두 생성되지 않았습니다. 다시 시도해 주세요.');
 
     generatedMessages = messages;
