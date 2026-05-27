@@ -96,6 +96,7 @@ let currentCampaignId = null;
 let aiImageBase64 = null;
 let aiImageMimeType = null;
 let selectedCampaignCache = null;
+let lastGeneratedPrompt = '';
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -115,7 +116,7 @@ Object.assign(window, {
   deleteCampaign, openModal, closeModal, exportReport, startNewEval,
   toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
   removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
-  generateMessage, copyGeneratedMessage,
+  generateMessage, copyGeneratedMessage, copyLastPrompt,
   handleImgGenUpload, removeImgGenImage,
   generateAlimtokImage, downloadAlimtokImage
 });
@@ -1400,6 +1401,14 @@ async function generateMessage() {
 
   const msgLength = document.getElementById('genMsgLength').value || 'long';
   const prompt = buildGeneratePrompt(serviceType, content, msgLength);
+  
+  // Capture the applied prompt for user lookup
+  lastGeneratedPrompt = prompt;
+  const tooltipContentEl = document.getElementById('promptTooltipContent');
+  if (tooltipContentEl) {
+    tooltipContentEl.textContent = prompt;
+  }
+
   const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash-001'];
 
   try {
@@ -1587,6 +1596,38 @@ function copyGeneratedMessage(index) {
     document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('📋 문안이 클립보드에 복사되었습니다!');
+  });
+}
+
+function copyLastPrompt(event) {
+  if (event) event.stopPropagation();
+  if (!lastGeneratedPrompt) {
+    showToast('⚠️ 아직 생성된 문안이 없습니다.');
+    return;
+  }
+  navigator.clipboard.writeText(lastGeneratedPrompt).then(() => {
+    const btn = event.target;
+    if (btn) {
+      const originalText = btn.textContent;
+      btn.textContent = '✅ 복사됨!';
+      btn.style.background = 'var(--accent-emerald)';
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 2000);
+    }
+    showToast('📋 적용된 AI 프롬프트가 클립보드에 복사되었습니다!');
+  }).catch(() => {
+    // Fallback copy
+    const ta = document.createElement('textarea');
+    ta.value = lastGeneratedPrompt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 적용된 AI 프롬프트가 클립보드에 복사되었습니다!');
   });
 }
 

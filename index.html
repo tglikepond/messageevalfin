@@ -581,11 +581,29 @@
       <!-- 생성 결과 영역 -->
       <div id="genResultSection" style="display:none;">
         <div class="section">
-          <div class="section-header">
-            <div class="section-title">
+          <div class="section-header" style="position:relative; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div class="section-title" style="margin:0;">
               <div class="icon icon-emerald">🤖</div>AI 생성 결과
             </div>
-            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);" id="genResultBadge">Powered by Gemini</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);" id="genResultBadge">Powered by Gemini</span>
+              
+              <!-- 적용된 AI 프롬프트 툴팁 -->
+              <div class="prompt-tooltip-container">
+                <div class="prompt-tooltip-trigger">
+                  <span>ℹ️ 적용된 AI 프롬프트 보기</span>
+                </div>
+                <div class="prompt-tooltip-box">
+                  <div class="tooltip-header">
+                    <span>💡 적용된 AI 시스템 지침 및 데이터</span>
+                    <button class="tooltip-copy-btn" onclick="copyLastPrompt(event)">📋 복사</button>
+                  </div>
+                  <div class="tooltip-body">
+                    <pre id="promptTooltipContent">문안을 생성하면 실제 사용된 프롬프트가 여기에 표시됩니다.</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 로딩 -->
