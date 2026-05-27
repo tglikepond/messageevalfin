@@ -183,9 +183,9 @@ async function saveCampaignData() {
     id: currentCampaignId || Date.now(), name,
     sendDate: document.getElementById('sendDate').value,
     sendTime: document.getElementById('sendTime').value,
-    sendRecipients: parseInt(document.getElementById('sendRecipients').value) || 0,
+    sendRecipients: 0,
     channel: '',
-    segment: document.getElementById('targetSegment').value,
+    segment: '',
     openRate: parseFloat(document.getElementById('actualOpenRate').value) || 0,
     convertRate: parseFloat(document.getElementById('actualConvertRate').value) || 0,
     msgTitle: '',
@@ -271,11 +271,7 @@ function loadCampaignResult() {
   // Campaign info
   document.getElementById('resultCampaignSummary').innerHTML = `
     <strong>캠페인명:</strong> ${c.name}<br>
-    <strong>발송일:</strong> ${c.sendDate || '미입력'}<br>
-    <strong>발송시간:</strong> ${c.sendTime || '미입력'}<br>
-    <strong>발송 인원:</strong> ${c.sendRecipients ? c.sendRecipients.toLocaleString() + '명' : '미입력'}<br>
-    <strong>채널:</strong> ${c.channel || '미입력'}<br>
-    <strong>세그먼트:</strong> ${c.segment || '미입력'}<br>
+    <strong>발송일시:</strong> ${c.sendDate || '미입력'} ${c.sendTime || ''}<br>
     <strong>오픈율:</strong> <span style="color:var(--accent-blue)">${c.openRate}%</span> · 
     <strong>전환율:</strong> <span style="color:var(--accent-emerald)">${c.convertRate}%</span>`;
 
@@ -551,7 +547,7 @@ function refreshOverview() {
 // ===== Utility =====
 function startNewEval() { currentCampaignId = null; aiScores = {}; aiImprovements = {}; aiRecommendations = []; selectedCampaignCache = null; aiCompleted = false; resetAll(); switchTab('campaign'); }
 function resetAll() {
-  ['campaignName', 'sendDate', 'sendRecipients', 'targetSegment', 'actualOpenRate', 'actualConvertRate', 'aiMsgBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['campaignName', 'sendDate', 'actualOpenRate', 'actualConvertRate', 'aiMsgBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('sendTime').value = '09:00';
   feedbackRating = 0; setStars(0); document.getElementById('starLabel').textContent = '별점을 선택해 주세요';
   ['fbRelevance', 'fbWillingness'].forEach(id => { document.getElementById(id).value = 5; });
@@ -594,7 +590,7 @@ function exportReport() {
   const id = parseInt(document.getElementById('resultCampaignSelect').value); if (!id) { showToast('⚠️ 캠페인 선택'); return; }
   const c = loadCampaigns().find(x => x.id === id); if (!c) return;
   const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0; const fb = c.feedback; const hasFb = fb && fb.rating > 0;
-  let r = `메시지 성과 평가 리포트\n${'='.repeat(40)}\n캠페인: ${c.name}\n발송일: ${c.sendDate || '미입력'}\n발송시간: ${c.sendTime || '미입력'}\n발송 인원: ${c.sendRecipients ? c.sendRecipients.toLocaleString() + '명' : '미입력'}\n채널: ${c.channel || '미입력'}\n세그먼트: ${c.segment || '미입력'}\n오픈율: ${c.openRate}% | 전환율: ${c.convertRate}%\n`;
+  let r = `메시지 성과 평가 리포트\n${'='.repeat(40)}\n캠페인: ${c.name}\n발송일: ${c.sendDate || '미입력'}\n발송시간: ${c.sendTime || '미입력'}\n오픈율: ${c.openRate}% | 전환율: ${c.convertRate}%\n`;
   if (hasAi) { r += `\n[AI 평가 10항목]\n${'-'.repeat(40)}\n`; aiEvalItems.forEach((it, i) => { r += `${i + 1}. ${it.title}: ${c.aiScores[it.id] || '-'}/10\n`; }); }
   if (hasFb) r += `\n[고객 피드백]\n${'-'.repeat(40)}\n별점: ${fb.rating}/5\n관련성: ${fb.relevance}/10\n재수신: ${fb.willingness}/10\n의견: ${fb.comment || '없음'}\n`;
   const blob = new Blob([r], { type: 'text/plain;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `eval_${c.name}_${new Date().toISOString().slice(0, 10)}.txt`; a.click(); showToast('리포트 다운로드 완료!');
@@ -733,10 +729,10 @@ function buildAiPrompt() {
   const body = document.getElementById('aiMsgBody').value.trim();
   const sendDate = document.getElementById('sendDate').value;
   const sendTime = document.getElementById('sendTime').value;
-  const sendRecipients = document.getElementById('sendRecipients').value;
+  const sendRecipients = '';
   const openRate = document.getElementById('actualOpenRate').value;
   const convertRate = document.getElementById('actualConvertRate').value;
-  const segment = document.getElementById('targetSegment').value;
+  const segment = '';
   const campaignName = document.getElementById('campaignName').value.trim();
 
   // Collect feedback info
