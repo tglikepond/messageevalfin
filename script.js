@@ -982,7 +982,7 @@ async function runAiEvaluation() {
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
   document.getElementById('aiResultSection').style.display = 'block'; document.getElementById('aiLoading').style.display = 'flex';
   document.getElementById('aiResultCard').style.display = 'none'; document.getElementById('aiScoreSummary').style.display = 'none';
-  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash-001'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-001'];
   try {
     const parts = [{ text: buildAiPrompt() }]; if (aiImageBase64) parts.push({ inline_data: { mime_type: aiImageMimeType, data: aiImageBase64 } });
     let text = null, usedModel = '';
@@ -1302,33 +1302,35 @@ OOO 후원자님, 서둘러주세요! 3월 특별 문화 혜택 예매가 곧 �
   const outputFormat = `
 # 출력 형식 (반드시 정확히 지켜주세요)
 
-정확히 아래 JSON 형식으로 3개의 문안을 출력하세요. JSON 블록 외에는 아무것도 출력하지 마세요.
+API 응답 출력 형태가 application/json으로 강제되어 있으므로, 마크다운 코드 블록(예: \`\`\`json ... \`\`\`)을 절대로 사용하지 마시고 오직 순수한 JSON 배열 구조만 반환하세요.
 
-\`\`\`json
+* 매우 중요: JSON 문법이 절대로 깨지지 않도록, 모든 문자열 값 내에서 대화나 직접 인용구를 표현할 때는 절대로 쌍따옴표(")를 중첩해서 사용하지 마시고 반드시 홑따옴표(')를 사용하세요.
+
+정확히 아래 스키마의 JSON 배열 구조로 3개의 문안을 출력하세요:
+
 [
   {
     "typeName": "유형 이름",
-    "opening": "1) 오프닝 텍스트 (가벼운 안부와 관심을 끄는 화제 제기가 매끄럽게 결합된 문장)",
+    "opening": "1) 오프닝 텍스트 (유형별 오프닝 작법에 맞춘 문장)",
     "content": "2) 실제 내용 및 제안 텍스트 (성과 수치, 사업 팩트, 구체적 일정 등)",
     "cta": "3) 행동 촉구 텍스트 (활동 참여, 링크 접속 유도 등)",
     "description": "문안 생성 시 중점을 둔 핵심 사항(타겟 소구점, 카피라이팅 기법 등)에 대한 간략한 설명 (1~2문장)"
   },
   {
     "typeName": "유형 이름",
-    "opening": "오프닝 텍스트 (화제 제기 결합)",
+    "opening": "오프닝 텍스트",
     "content": "실제 내용 및 제안 텍스트",
     "cta": "행동 촉구 텍스트",
     "description": "생성 시 중점을 둔 점 설명"
   },
   {
     "typeName": "유형 이름",
-    "opening": "오프닝 텍스트 (화제 제기 결합)",
+    "opening": "오프닝 텍스트",
     "content": "실제 내용 및 제안 텍스트",
     "cta": "행동 촉구 텍스트",
     "description": "생성 시 중점을 둔 점 설명"
   }
 ]
-\`\`\`
 
 # 사용자가 보내고자 하는 내용
 \`\`\`
@@ -1409,7 +1411,7 @@ async function generateMessage() {
     tooltipContentEl.textContent = prompt;
   }
 
-  const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash-001'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-001'];
 
   try {
     let text = null, usedModel = '';
@@ -1474,6 +1476,19 @@ async function generateMessage() {
           } catch (e3) {
             console.warn("Bracket index JSON parse failed:", e3);
           }
+        }
+      }
+    }
+
+    // Auto-unpack wrapper object to array
+    if (messages && !Array.isArray(messages) && typeof messages === 'object') {
+      const possibleArray = Object.values(messages).find(val => Array.isArray(val) && val.length >= 3);
+      if (possibleArray) {
+        messages = possibleArray;
+      } else {
+        const keys = Object.keys(messages);
+        if (keys.length >= 3) {
+          messages = keys.map(k => messages[k]);
         }
       }
     }
