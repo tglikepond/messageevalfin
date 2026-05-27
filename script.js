@@ -1195,23 +1195,22 @@ function initGenServiceType() {
 
 function buildGeneratePrompt(serviceType, content, msgLength = 'long') {
   const lengthRule = msgLength === 'short'
-    ? `2. 각 문안은 오프닝, 화제 제기, 실제 내용 및 제안, 행동 촉구의 네 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 140자 이상, 200자 이하**가 되도록 매우 간결하고 짜임새 있게 작성하세요. 140자 미만이거나 200자를 초과해서는 절대로 안 됩니다. 핵심 정보만 명확히 담으세요.`
-    : `2. 각 문안은 오프닝, 화제 제기, 실제 내용 및 제안, 행동 촉구의 네 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 210자 이상, 400자 이하**가 되도록 풍부하고 상세하게 작성하세요. 210자 미만이거나 400자를 초과해서는 안 됩니다. 구체적인 성과와 따뜻한 감동 문구를 충분히 활용해 주세요.`;
+    ? `2. 각 문안은 오프닝, 실제 내용 및 제안, 행동 촉구의 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 140자 이상, 200자 이하**가 되도록 매우 간결하고 짜임새 있게 작성하세요. 140자 미만이거나 200자를 초과해서는 절대로 안 됩니다. 핵심 정보만 명확히 담으세요.`
+    : `2. 각 문안은 오프닝, 실제 내용 및 제안, 행동 촉구의 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 210자 이상, 400자 이하**가 되도록 풍부하고 상세하게 작성하세요. 210자 미만이거나 400자를 초과해서는 안 됩니다. 구체적인 성과와 따뜻한 감동 문구를 충분히 활용해 주세요.`;
 
   const referenceNotice = msgLength === 'short'
-    ? `* 주의: 아래 '참고 예시'는 분량이 긴 편(장문)이므로, 단문 형태를 작성할 때는 예시의 '구조(4단계)'와 '따뜻한 톤'만 참고하되 분량을 대폭 축소하여 반드시 140자 이상, 200자 이하가 되도록 하세요.`
-    : `* 주의: 아래 '참고 예시'와 비슷하게 구체적이고 풍성한 내용(210자 ~ 400자 범위 내)으로 작성해 주세요.`;
+    ? `* 주의: 아래 '참고 예시'는 분량이 긴 편(장문)이자 구버전의 4단계 구조이므로, 단문 형태를 작성할 때는 예시의 '따뜻한 톤'만 참고하되 구조를 3단계로 합치고 분량을 대폭 축소하여 반드시 140자 이상, 200자 이하가 되도록 하세요.`
+    : `* 주의: 아래 '참고 예시'는 구버전의 4단계 구조입니다. 이를 오프닝에서 화제 제기가 자연스럽게 녹아들도록 부드럽게 변환하여 3단계 구조로 재구성하고, 구체적이고 풍성한 내용(210자 ~ 400자 범위 내)으로 작성해 주세요.`;
 
   const commonContext = `# 역할
 당신은 초록우산 어린이재단(www.chorogusan.or.kr)의 카카오톡 알림톡 메시지 카피라이터입니다.
 초록우산은 아이들과 어려운 사람들을 돕는 아동복지 전문기관이며, 후원자분들에게 정기적으로 메시지를 발송합니다.
 
 # 핵심 규칙
-1. 모든 문안은 반드시 아래 4단계 구조를 유지하세요:
-   - 1) 오프닝: 후원자 호칭("OOO 후원자님")으로 시작하며, 관심을 끄는 질문이나 인사
-   - 2) 화제 제기: 핵심 이슈나 놀라운 사실, 질문을 던져 읽기를 유도
-   - 3) 실제 내용 및 제안: 구체적 수치/사례/혜택 등 핵심 전달 내용
-   - 4) 행동 촉구: 링크 클릭, 참여, 관심 등 구체적 행동 유도 CTA
+1. 모든 문안은 반드시 아래 **3단계 구조**를 엄격히 준수하여 유지하세요:
+   - 1) 오프닝 (opening): 후원자 호칭("OOO 후원자님")으로 시작하며, 따뜻한 안부나 독자의 관심과 호기심을 끄는 흥미로운 질문 및 상황 제시(화제 제기 기법)를 자연스럽게 결합하여 1~2문장으로 매끄럽게 작성하세요.
+   - 2) 실제 내용 및 제안 (content): 후원의 성과(수치, 통계 등 구체적 변화) 또는 안내하고자 하는 혜택/참여 일정을 신뢰성 있게 기술하세요.
+   - 3) 행동 촉구 (cta): 링크 접속, 참여 독려 등 구체적인 실천 행동을 자연스러운 문구로 유도하세요.
 ${lengthRule}
 3. 초록우산의 따뜻하고 진정성 있는 톤을 유지하세요.
 4. 이모지를 자연스럽게 활용하되 과하지 않게 사용하세요.
@@ -1307,24 +1306,21 @@ OOO 후원자님, 서둘러주세요! 3월 특별 문화 혜택 예매가 곧 �
 [
   {
     "typeName": "유형 이름",
-    "opening": "1) 오프닝 텍스트",
-    "topic": "2) 화제 제기 텍스트",
-    "content": "3) 실제 내용 및 제안 텍스트",
-    "cta": "4) 행동 촉구 텍스트",
+    "opening": "1) 오프닝 텍스트 (가벼운 안부와 관심을 끄는 화제 제기가 매끄럽게 결합된 문장)",
+    "content": "2) 실제 내용 및 제안 텍스트 (성과 수치, 사업 팩트, 구체적 일정 등)",
+    "cta": "3) 행동 촉구 텍스트 (활동 참여, 링크 접속 유도 등)",
     "description": "문안 생성 시 중점을 둔 핵심 사항(타겟 소구점, 카피라이팅 기법 등)에 대한 간략한 설명 (1~2문장)"
   },
   {
     "typeName": "유형 이름",
-    "opening": "오프닝 텍스트",
-    "topic": "화제 제기 텍스트",
+    "opening": "오프닝 텍스트 (화제 제기 결합)",
     "content": "실제 내용 및 제안 텍스트",
     "cta": "행동 촉구 텍스트",
     "description": "생성 시 중점을 둔 점 설명"
   },
   {
     "typeName": "유형 이름",
-    "opening": "오프닝 텍스트",
-    "topic": "화제 제기 텍스트",
+    "opening": "오프닝 텍스트 (화제 제기 결합)",
     "content": "실제 내용 및 제안 텍스트",
     "cta": "행동 촉구 텍스트",
     "description": "생성 시 중점을 둔 점 설명"
@@ -1483,7 +1479,7 @@ function renderGenerateResults(messages, serviceType) {
 
   container.innerHTML = messages.slice(0, 3).map((msg, i) => {
     const cfg = configs[i] || configs[0];
-    const fullText = [msg.opening, msg.topic, msg.content, msg.cta].filter(Boolean).join('\n\n');
+    const fullText = [msg.opening, msg.content, msg.cta].filter(Boolean).join('\n\n');
     const charCount = fullText.length;
     return `
       <div class="gen-result-card" style="border-top:3px solid ${cfg.color};">
@@ -1496,19 +1492,15 @@ function renderGenerateResults(messages, serviceType) {
         </div>
         <div class="gen-card-body">
           <div class="gen-msg-section">
-            <div class="gen-section-label opening">1) 오프닝</div>
+            <div class="gen-section-label opening">1) 오프닝 (화제 제기 결합)</div>
             <div class="gen-msg-text">${escapeHtml(msg.opening || '')}</div>
           </div>
           <div class="gen-msg-section">
-            <div class="gen-section-label topic">2) 화제 제기</div>
-            <div class="gen-msg-text">${escapeHtml(msg.topic || '')}</div>
-          </div>
-          <div class="gen-msg-section">
-            <div class="gen-section-label content">3) 실제 내용 및 제안</div>
+            <div class="gen-section-label content">2) 실제 내용 및 제안</div>
             <div class="gen-msg-text">${escapeHtml(msg.content || '')}</div>
           </div>
           <div class="gen-msg-section">
-            <div class="gen-section-label cta">4) 행동 촉구</div>
+            <div class="gen-section-label cta">3) 행동 촉구</div>
             <div class="gen-msg-text">${escapeHtml(msg.cta || '')}</div>
           </div>
           ${msg.description ? `
@@ -1539,7 +1531,7 @@ function escapeHtml(text) {
 function copyGeneratedMessage(index) {
   if (!generatedMessages[index]) return;
   const msg = generatedMessages[index];
-  const fullText = [msg.opening, msg.topic, msg.content, msg.cta].filter(Boolean).join('\n\n');
+  const fullText = [msg.opening, msg.content, msg.cta].filter(Boolean).join('\n\n');
 
   navigator.clipboard.writeText(fullText).then(() => {
     const btn = document.getElementById(`genCopyBtn${index}`);
