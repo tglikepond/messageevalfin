@@ -1193,7 +1193,15 @@ function initGenServiceType() {
   });
 }
 
-function buildGeneratePrompt(serviceType, content) {
+function buildGeneratePrompt(serviceType, content, msgLength = 'long') {
+  const lengthRule = msgLength === 'short'
+    ? `2. 각 문안은 오프닝, 화제 제기, 실제 내용 및 제안, 행동 촉구의 네 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 200자 이하**가 되도록 매우 간결하고 함축적으로 작성하세요. 절대로 200자를 초과해서는 안 됩니다. 불필요한 미사여구는 최대한 배제하고 핵심적인 성과나 혜택만 명확히 담으세요.`
+    : `2. 각 문안은 오프닝, 화제 제기, 실제 내용 및 제안, 행동 촉구의 네 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 220자 이상**이 되도록 풍부하고 상세하게 작성하세요. 220자 미만으로 짧게 작성하면 안 됩니다. 구체적인 배경 설명이나 따뜻한 감동을 주는 격려와 감사의 문장을 충분히 포함시키세요.`;
+
+  const referenceNotice = msgLength === 'short'
+    ? `* 주의: 아래 '참고 예시'는 분량이 긴 편(장문)이므로, 단문 형태를 작성할 때는 예시의 '구조(4단계)'와 '따뜻한 톤'만 참고하되 분량을 대폭 축소하여 반드시 200자 이하가 되도록 하세요.`
+    : `* 주의: 아래 '참고 예시'와 비슷하게 구체적이고 풍성한 내용(220자 이상)으로 작성해 주세요.`;
+
   const commonContext = `# 역할
 당신은 초록우산 어린이재단(www.chorogusan.or.kr)의 카카오톡 알림톡 메시지 카피라이터입니다.
 초록우산은 아이들과 어려운 사람들을 돕는 아동복지 전문기관이며, 후원자분들에게 정기적으로 메시지를 발송합니다.
@@ -1204,10 +1212,11 @@ function buildGeneratePrompt(serviceType, content) {
    - 2) 화제 제기: 핵심 이슈나 놀라운 사실, 질문을 던져 읽기를 유도
    - 3) 실제 내용 및 제안: 구체적 수치/사례/혜택 등 핵심 전달 내용
    - 4) 행동 촉구: 링크 클릭, 참여, 관심 등 구체적 행동 유도 CTA
-2. 카카오톡 알림톡 형식에 맞게 적절한 길이(200~400자 내외)를 유지하세요.
+${lengthRule}
 3. 초록우산의 따뜻하고 진정성 있는 톤을 유지하세요.
 4. 이모지를 자연스럽게 활용하되 과하지 않게 사용하세요.
 5. 각 문안은 서로 확실히 다른 스타일과 접근법을 사용하세요.
+${referenceNotice}
 `;
 
   let typePrompt = '';
@@ -1388,7 +1397,8 @@ async function generateMessage() {
   document.getElementById('genLoading').style.display = 'flex';
   document.getElementById('genResultCards').innerHTML = '';
 
-  const prompt = buildGeneratePrompt(serviceType, content);
+  const msgLength = document.getElementById('genMsgLength').value || 'long';
+  const prompt = buildGeneratePrompt(serviceType, content, msgLength);
   const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash-001'];
 
   try {
@@ -1469,6 +1479,8 @@ function renderGenerateResults(messages, serviceType) {
 
   container.innerHTML = messages.slice(0, 3).map((msg, i) => {
     const cfg = configs[i] || configs[0];
+    const fullText = [msg.opening, msg.topic, msg.content, msg.cta].filter(Boolean).join('\n\n');
+    const charCount = fullText.length;
     return `
       <div class="gen-result-card" style="border-top:3px solid ${cfg.color};">
         <div class="gen-card-header">
@@ -1476,7 +1488,7 @@ function renderGenerateResults(messages, serviceType) {
             <span class="gen-card-number">${i + 1}</span>
             ${cfg.icon} ${msg.typeName || `유형 ${i + 1}`}
           </h4>
-          <span class="gen-type-tag ${cfg.tagClass}">${msg.typeName || `유형 ${i + 1}`}</span>
+          <span class="gen-type-tag ${cfg.tagClass}">${msg.typeName || `유형 ${i + 1}`} (${charCount}자)</span>
         </div>
         <div class="gen-card-body">
           <div class="gen-msg-section">
