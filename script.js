@@ -4,46 +4,93 @@ import { db, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, ord
 // ===== 10 AI Evaluation Items (Full Analysis) =====
 const aiEvalItems = [
   {
-    id: 'subject', title: '첫 줄 매력도', category: '콘텐츠', icon: '✍️',
-    tip: '첫 줄은 15자 이내, 핵심 혜택/호기심 선두 배치', rec: '첫 줄에 핵심 혜택을 배치하고 15자 이내로 압축하세요'
+    id: 'first_line_attraction', title: '첫 줄 및 프리뷰 후킹력', category: '수신 & 프리뷰', icon: '✍️',
+    tip: '30자 이내 질문형/수치형 키워드 배치. 상투적 인사 최소화', rec: '첫 문장의 상투적 인사를 빼고 30자 이내에 핵심 질문이나 수치 혜택을 명시하세요.'
   },
   {
-    id: 'body', title: '본문 콘텐츠 품질', category: '콘텐츠', icon: '📄',
-    tip: '핵심 메시지는 첫 2줄 이내, 이미지 비율 40% 이하', rec: '본문 길이를 100자 이내로 줄이고 이미지 비율을 조정하세요'
+    id: 'visual_emoji_harmony', title: '비주얼 후킹 및 이모지 조화', category: '시각적 인지', icon: '🎨',
+    tip: '100자당 이모지 1~2개 수준 최적. 과도함 및 전무함 방지', rec: '텍스트 100자당 1-2개 수준으로 이모지를 배치해 시각적 집중도를 높이세요.'
   },
   {
-    id: 'cta', title: 'CTA(행동유도) 효과성', category: '콘텐츠', icon: '🎯',
-    tip: 'CTA는 1개로 집중, 구체적 혜택 명시', rec: 'CTA를 1개로 통일하고 구체적 혜택을 명시하세요'
+    id: 'personalization_density', title: '개인화 정밀성 & 밀도', category: '오프닝', icon: '🧩',
+    tip: '고객명/치환 변수의 오프닝 자연스러운 배치 및 개수(2개 이상)', rec: '메시지 오프닝에 동적 치환 변수([이름], [날짜] 등)를 추가하여 개별 맞춤 느낌을 강화하세요.'
   },
   {
-    id: 'timing', title: '발송 시간 적합성', category: '발송 전략', icon: '⏰',
-    tip: '평일 오전 10-11시, 점심 12-13시가 최적', rec: '오전 10-11시 또는 점심 12-13시 발송을 테스트하세요'
+    id: 'opening_conciseness', title: '오프닝 맥락 간결성', category: '오프닝', icon: '📄',
+    tip: '상투적 서두 생략. 3초 이내 본론 목적 인지 두괄식 전개', rec: '안부 인사를 생략하고 첫 1~2문장 내에 발송 목적과 주요 가치를 두괄식으로 기술하세요.'
   },
   {
-    id: 'frequency', title: '발송 빈도 적절성', category: '발송 전략', icon: '📅',
-    tip: '주 1-2회가 적정, 수신거부율 0.5% 이하 유지', rec: '발송 빈도를 주 1-2회로 조정하세요'
+    id: 'timing_optimization', title: '요일/시간 타이밍 매칭', category: '컨텍스트', icon: '⏰',
+    tip: '콘텐츠 성격(감성/후기 vs 혜택/마감)에 적절한 발송 요일/시간대', rec: '기부 성과/스토리는 주말 전 저녁 시간대, 참여 신청은 주중 오전 시간대로 발송 일정을 조정해 보세요.'
   },
   {
-    id: 'segment', title: '타겟 세그먼트 정확도', category: '타겟팅', icon: '👥',
-    tip: 'RFM 분석 기반 세그먼트 최소 5개 이상 구분', rec: 'RFM 분석을 활용한 세분화를 강화하세요'
+    id: 'urgency_trigger', title: '긴급성 및 즉각적 유도', category: '본문 탐독', icon: '🚨',
+    tip: '마감 시한, 희소성 자극, 실시간 아동 상황 등으로 즉시 열람 유도', rec: '메시지에 마감 시간(예: 오늘 밤 12시 마감)이나 즉시 확인해야 할 실시간 명분을 추가해 보세요.'
   },
   {
-    id: 'personalization', title: '개인화 수준', category: '타겟팅', icon: '🧩',
-    tip: '이름 + 최근 관심 상품 조합이 가장 효과적', rec: '고객명 + 관심 상품 기반 개인화를 적용하세요'
+    id: 'fatigue_control', title: '피로도 제어 및 광고감 통제', category: '본문 신뢰', icon: '🛡️',
+    tip: '과장된 광고 멘트, 특수기호/느낌표 남발 억제 및 브랜드 신뢰 유지', rec: '과도한 문장부호(!!!)나 쇼핑/광고성 어휘를 줄여 브랜드 품격과 신뢰도를 지켜주세요.'
   },
   {
-    id: 'offer', title: '혜택/리워드 매력도', category: '프로모션', icon: '🎁',
-    tip: '실물 선물/포인트/쿠폰 등 실질 리워드가 핵심', rec: '구체적인 혜택(선물, 포인트, 쿠폰 등)을 명시하세요'
+    id: 'value_pre_exposure', title: '혜택 가치 사전 노출도', category: '본문 신뢰', icon: '🎁',
+    tip: '상세 링크 클릭 전 본문에서 명확한 정서적 보람/수혜 결과 사전 요약', rec: '링크 클릭 전에 알림톡 본문 내에서 고객이 누릴 보람이나 혜택 요약본을 미리 일부 노출하세요.'
   },
   {
-    id: 'channel', title: '채널 적합성', category: '발송 전략', icon: '📱',
-    tip: '긴급→SMS/푸시, 상세→이메일, 리치→카카오', rec: '메시지 목적에 맞는 채널을 재검토하세요'
+    id: 'cta_architecture', title: '단일 목적 집중도', category: '최종 액션', icon: '🎯',
+    tip: '주의 분산 방지를 위한 클릭 유도 버튼(CTA) 1개 중심 설계', rec: '메시지 본문의 링크나 버튼 개수를 단 1개로 집중하여 선택 장애를 최소화하세요.'
   },
   {
-    id: 'landing', title: '랜딩 페이지 연결성', category: '콘텐츠', icon: '🔗',
-    tip: '메시지-랜딩 간 일치, 3클릭 이내 전환', rec: '랜딩 페이지와 메시지 간 일관성을 강화하세요'
+    id: 'cta_actionability', title: 'CTA 액션 문구 직관성', category: '최종 액션', icon: '🔗',
+    tip: '행동 촉구형 동사와 클릭 후 얻게 될 혜택의 매력적 결합 명칭', rec: '버튼 텍스트를 모호한 \'자세히 보기\' 대신 \'💌 아이의 손편지 읽어보기\'처럼 혜택과 행동이 결합된 표현으로 수정하세요.'
   }
 ];
+
+function calculateTpi(scores) {
+  if (!scores || Object.keys(scores).length === 0) return 0;
+  
+  const openIds = [
+    'first_line_attraction', 
+    'visual_emoji_harmony', 
+    'personalization_density', 
+    'opening_conciseness', 
+    'timing_optimization', 
+    'urgency_trigger', 
+    'fatigue_control', 
+    'value_pre_exposure'
+  ];
+  const convertIds = [
+    'cta_architecture', 
+    'cta_actionability'
+  ];
+  
+  let openSum = 0, openCount = 0;
+  openIds.forEach(id => {
+    if (typeof scores[id] === 'number') {
+      openSum += scores[id];
+      openCount++;
+    }
+  });
+  const openIndex = openCount > 0 ? (openSum / openCount) : 5;
+  
+  let convertSum = 0, convertCount = 0;
+  convertIds.forEach(id => {
+    if (typeof scores[id] === 'number') {
+      convertSum += scores[id];
+      convertCount++;
+    }
+  });
+  const convertIndex = convertCount > 0 ? (convertSum / convertCount) : 5;
+  
+  let tpi = (openIndex * 8) + (convertIndex * 2);
+  tpi = Math.round(tpi * 10) / 10;
+  
+  const fatigueScore = scores['fatigue_control'];
+  if (typeof fatigueScore === 'number' && fatigueScore <= 4) {
+    tpi = tpi * 0.9;
+  }
+  
+  return Math.round(Math.max(0, Math.min(100, tpi)));
+}
 
 // ===== Firestore Storage =====
 const CAMPAIGNS_COLLECTION = 'campaigns';
@@ -246,7 +293,7 @@ function loadCampaignResult() {
   // Calculate scores
   const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
   let aiPct = 0;
-  if (hasAi) aiPct = Math.round(Object.values(c.aiScores).reduce((a, b) => a + b, 0) / (aiEvalItems.length * 10) * 100);
+  if (hasAi) aiPct = calculateTpi(c.aiScores);
   const hasFb = c.feedback && c.feedback.rating > 0;
   let fbPct = 0;
   if (hasFb) fbPct = Math.round(((c.feedback.rating * 2) + c.feedback.relevance + c.feedback.willingness) / 30 * 100);
@@ -257,13 +304,48 @@ function loadCampaignResult() {
   else if (hasFb) { totalPct = fbPct; breakdown = `피드백 점수만 반영`; }
   else { totalPct = 0; breakdown = '아직 평가되지 않음'; }
 
-  // Score circle
-  const ring = document.getElementById('scoreRing');
-  ring.style.strokeDashoffset = '283';
-  setTimeout(() => { ring.style.strokeDashoffset = 283 - (283 * totalPct / 100); }, 100);
+  // Concentric Neon SVG Rings Stroke animation
+  const openIds = ['first_line_attraction', 'visual_emoji_harmony', 'personalization_density', 'opening_conciseness', 'timing_optimization', 'urgency_trigger', 'fatigue_control', 'value_pre_exposure'];
+  const convertIds = ['cta_architecture', 'cta_actionability'];
+  
+  let openSum = 0, openCount = 0;
+  openIds.forEach(fid => { if (typeof c.aiScores[fid] === 'number') { openSum += c.aiScores[fid]; openCount++; } });
+  const openIndex = openCount > 0 ? (openSum / openCount) : 0;
+  
+  let convertSum = 0, convertCount = 0;
+  convertIds.forEach(fid => { if (typeof c.aiScores[fid] === 'number') { convertSum += c.aiScores[fid]; convertCount++; } });
+  const convertIndex = convertCount > 0 ? (convertSum / convertCount) : 0;
+
+  const openIndexRing = document.getElementById('openIndexRing');
+  const convertIndexRing = document.getElementById('convertIndexRing');
+  const scoreRing = document.getElementById('scoreRing');
+  
+  if (openIndexRing) {
+    openIndexRing.style.strokeDashoffset = '301.6';
+    setTimeout(() => { openIndexRing.style.strokeDashoffset = String(301.6 - (301.6 * (openIndex / 10))); }, 100);
+  }
+  if (convertIndexRing) {
+    convertIndexRing.style.strokeDashoffset = '175.93';
+    setTimeout(() => { convertIndexRing.style.strokeDashoffset = String(175.93 - (175.93 * (convertIndex / 10))); }, 100);
+  }
+  if (scoreRing) {
+    scoreRing.style.strokeDashoffset = '238.76';
+    setTimeout(() => { scoreRing.style.strokeDashoffset = String(238.76 - (238.76 * (totalPct / 100))); }, 100);
+  }
+  
   document.getElementById('scoreNum').textContent = totalPct;
   document.getElementById('scoreGrade').textContent = totalPct >= 75 ? '🏆 우수' : totalPct >= 50 ? '📈 보통' : totalPct > 0 ? '⚠️ 개선 필요' : '—';
-  document.getElementById('scoreComment').innerHTML = (totalPct >= 75 ? '매우 우수한 캠페인입니다!' : totalPct >= 50 ? '양호하나 일부 개선이 필요합니다.' : totalPct > 0 ? '여러 항목에서 개선이 필요합니다.' : 'AI 분석을 실행해 주세요.') + `<br><span style="font-size:12px;color:var(--text-muted);">가중치: ${breakdown}</span>`;
+  
+  let fatigueAlert = '';
+  if (hasAi && typeof c.aiScores['fatigue_control'] === 'number' && c.aiScores['fatigue_control'] <= 4) {
+    fatigueAlert = ` <span style="color:var(--accent-rose);font-weight:700;">(⚠️ 피로도 통제 초과 10% 페널티 적용됨)</span>`;
+  }
+  
+  document.getElementById('scoreComment').innerHTML = (totalPct >= 75 ? '매우 우수한 캠페인입니다!' : totalPct >= 50 ? '양호하나 일부 개선이 필요합니다.' : totalPct > 0 ? '여러 항목에서 개선이 필요합니다.' : 'AI 분석을 실행해 주세요.') + fatigueAlert + `<br><span style="font-size:12px;color:var(--text-muted);">가중치: ${breakdown}</span>`;
+  
+  document.getElementById('scoreNumTpi').textContent = totalPct + '점';
+  document.getElementById('scoreNumOpen').textContent = openIndex.toFixed(1) + '점/10';
+  document.getElementById('scoreNumConvert').textContent = convertIndex.toFixed(1) + '점/10';
 
   // Summary cards
   document.getElementById('resultSummarySection').style.display = 'block';
@@ -391,6 +473,159 @@ function loadCampaignResult() {
   } else {
     rd.innerHTML = `<div class="comparison-grid">${lowItems.slice(0, 6).map(it => `<div class="comparison-card"><h4>${it.icon} ${it.title} <span class="score-badge low" style="font-size:11px;margin-left:8px;">${it.bestScore}점</span></h4><p>${it.aiRec}</p></div>`).join('')}</div>`;
   }
+
+  // 1:1 Side-by-side Feature Contrast Matrix
+  const pastCampaigns = loadCampaigns().filter(camp => camp.aiScores && Object.keys(camp.aiScores).length > 0 && camp.id !== id);
+  let bestCampaign = null;
+  let similarCampaign = null;
+  if (pastCampaigns.length > 0) {
+    const sortedByOpen = [...pastCampaigns].sort((x, y) => (y.openRate || 0) - (x.openRate || 0));
+    bestCampaign = sortedByOpen[0];
+    similarCampaign = findMostSimilarCampaign(c, pastCampaigns);
+  }
+
+  if (bestCampaign || similarCampaign) {
+    document.getElementById('featureSimulatorSection').style.display = 'block';
+    const fVal = (camp, type) => {
+      if (!camp) return '—';
+      if (type === 'weekday') return getDayOfWeek(camp.sendDate) || '(미지정)';
+      if (type === 'time') return camp.sendTime || '(미지정)';
+      if (type === 'chars') return (camp.msgStats ? camp.msgStats.charCount : (camp.msgBody ? camp.msgBody.length : 0)) + '자';
+      if (type === 'emojis') return (camp.msgStats ? camp.msgStats.emojiCount : 0) + '개';
+      if (type === 'cta') return (camp.ctaLinks ? camp.ctaLinks.length : 0) + '개';
+      if (type === 'open') return (camp.openRate || 0) + '%';
+      if (type === 'convert') return (camp.convertRate || 0) + '%';
+      return '—';
+    };
+
+    const dims = [
+      { label: '📅 발송 요일', key: 'weekday' },
+      { label: '⏰ 발송 시간대', key: 'time' },
+      { label: '📝 총 글자 수', key: 'chars' },
+      { label: '😄 이모지 수', key: 'emojis' },
+      { label: '🎯 CTA 버튼 수', key: 'cta' },
+      { label: '📬 실제 오픈율', key: 'open', isMetric: true, color: 'var(--accent-blue)' },
+      { label: '🎯 실제 전환율', key: 'convert', isMetric: true, color: 'var(--accent-emerald)' }
+    ];
+
+    const tableHtml = dims.map(d => {
+      const curText = fVal(c, d.key);
+      const bestText = fVal(bestCampaign, d.key);
+      const simText = fVal(similarCampaign, d.key);
+      let styleTd = 'padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border-glass);';
+      if (d.isMetric) styleTd += `font-weight:800;color:${d.color};background:rgba(255,255,255,0.02);`;
+      return `<tr>
+        <td style="text-align:left;font-weight:700;padding:12px 14px;border-bottom:1px solid var(--border-glass);">${d.label}</td>
+        <td style="${styleTd}font-weight:700;color:var(--text-primary);">${curText}</td>
+        <td style="${styleTd}">${bestText}</td>
+        <td style="${styleTd}">${simText}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('featureComparisonBody').innerHTML = tableHtml;
+  } else {
+    document.getElementById('featureSimulatorSection').style.display = 'none';
+  }
+
+  // 2D Positioning Matrix Board
+  const matrixContainer = document.getElementById('matrixDotsContainer');
+  if (matrixContainer) {
+    document.getElementById('positioningMatrixSection').style.display = 'block';
+    matrixContainer.innerHTML = '';
+    const allCamps = loadCampaigns();
+    
+    allCamps.forEach(camp => {
+      const hasCampAi = camp.aiScores && Object.keys(camp.aiScores).length > 0;
+      if (!hasCampAi) return;
+
+      let oSum = 0, oCount = 0;
+      openIds.forEach(fid => { if (typeof camp.aiScores[fid] === 'number') { oSum += camp.aiScores[fid]; oCount++; } });
+      const oIdx = oCount > 0 ? (oSum / oCount) : 5;
+
+      let cSum = 0, cCount = 0;
+      convertIds.forEach(fid => { if (typeof camp.aiScores[fid] === 'number') { cSum += camp.aiScores[fid]; cCount++; } });
+      const cIdx = cCount > 0 ? (cSum / cCount) : 5;
+
+      // Constrain position between 4% and 96%
+      const xPct = 4 + (oIdx / 10) * 92;
+      const yPct = 4 + (cIdx / 10) * 92;
+      const isCurrent = camp.id === id;
+
+      const dot = document.createElement('div');
+      dot.style.position = 'absolute';
+      dot.style.left = `${xPct}%`;
+      dot.style.bottom = `${yPct}%`;
+      dot.style.transform = 'translate(-50%, 50%)';
+
+      if (isCurrent) {
+        dot.className = 'matrix-star-active';
+        dot.style.width = '16px';
+        dot.style.height = '16px';
+        dot.style.background = 'var(--accent-purple)';
+        dot.style.borderRadius = '50%';
+        dot.style.boxShadow = '0 0 12px var(--accent-purple)';
+        dot.title = `[현재] ${camp.name} (오픈지수: ${oIdx.toFixed(1)}, 전환지수: ${cIdx.toFixed(1)})`;
+      } else {
+        dot.className = 'matrix-dot-past';
+        dot.style.width = '9px';
+        dot.style.height = '9px';
+        dot.style.background = 'rgba(255, 255, 255, 0.45)';
+        dot.style.borderRadius = '50%';
+        dot.style.border = '1px solid rgba(255,255,255,0.3)';
+        dot.title = `${camp.name} (오픈지수: ${oIdx.toFixed(1)}, 전환지수: ${cIdx.toFixed(1)})`;
+        dot.addEventListener('click', () => {
+          document.getElementById('resultCampaignSelect').value = camp.id;
+          loadCampaignResult();
+        });
+      }
+      matrixContainer.appendChild(dot);
+    });
+
+    const insightEl = document.getElementById('quadrantInsightCard');
+    if (insightEl) {
+      if (openIndex >= 7.5 && convertIndex >= 7.5) {
+        insightEl.innerHTML = `<strong style="color:var(--accent-purple);">🌟 스타 (CRM Star) 영역 포지셔닝 완료</strong><br>
+          이번 캠페인은 높은 오프닝 후킹력과 최적의 CTA 설계가 양립된 최정상급 메시지입니다. A/B 테스트 시 본문의 사소한 타이밍 변수만 추가 조정하며 성과를 고도화하세요.`;
+      } else if (openIndex >= 7.5 && convertIndex < 7.5) {
+        insightEl.innerHTML = `<strong style="color:var(--accent-blue);">📬 트래픽 캐쳐 (Traffic Catcher) 영역 포지셔닝 완료</strong><br>
+          첫 줄 후킹과 타이밍 최적화로 많은 후원자의 관심을 끄는 데는 성공할 것으로 보이나, CTA 설계(${convertIndex.toFixed(1)}점)가 취약합니다. <strong>CTA 버튼의 직관성을 보완</strong>하여 클릭 전환 이탈률을 방지하세요.`;
+      } else if (openIndex < 7.5 && convertIndex >= 7.5) {
+        insightEl.innerHTML = `<strong style="color:var(--accent-emerald);">🎯 클로저 (Closer) 영역 포지셔닝 완료</strong><br>
+          CTA 설계 및 가치 집중도가 매끄러워 메시지를 읽은 고객의 전환 효율은 높을 것으로 보이나, 오프닝 프리뷰(${openIndex.toFixed(1)}점)가 따분합니다. <strong>첫 줄에 호기심 질문이나 파격적인 수치</strong>를 명시하여 오프닝 레이트를 수혈하세요.`;
+      } else {
+        insightEl.innerHTML = `<strong style="color:var(--accent-rose);">⚠️ 리빌딩 대상 (Rebuilding Target) 영역 포지셔닝 완료</strong><br>
+          오프닝 후킹력과 CTA 전환 설계가 모두 평균(7.5점) 미만으로 리빌딩이 권장되는 슬럼프 상태입니다. <strong>초록우산 AI 문안 생성기</strong> 탭을 활용해 최적화된 시안을 즉시 보충 수수해 보세요.`;
+      }
+    }
+  }
+
+  // To-Do Launching Checklist
+  const todoContainer = document.getElementById('launchingTodoContainer');
+  if (todoContainer) {
+    document.getElementById('launchingChecklistSection').style.display = 'block';
+    const lowItemsForTodo = allItems.filter(it => it.bestScore <= 6);
+    if (lowItemsForTodo.length > 0) {
+      todoContainer.innerHTML = lowItemsForTodo.map((it, idx) => `
+        <label style="display:flex;align-items:start;gap:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);padding:14px;border-radius:8px;cursor:pointer;transition:background 0.2s;margin-bottom:8px;">
+          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent-emerald);width:16px;height:16px;" id="launchTodoCheck_${idx}">
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+              ${it.icon} ${it.title} <span class="score-badge low" style="font-size:10px;padding:2px 6px;">${it.bestScore}점</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;line-height:1.5;">
+              ❌ <strong>취약 요인:</strong> ${it.tip}<br>
+              💡 <strong>AI 액션 플랜:</strong> <span style="color:var(--accent-purple);font-weight:600;">${it.aiRec}</span>
+            </div>
+          </div>
+        </label>
+      `).join('');
+    } else {
+      todoContainer.innerHTML = `
+        <div style="text-align:center;padding:24px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:8px;color:var(--accent-emerald);font-size:13px;font-weight:700;">
+          🎉 10개 여정 지표가 모두 안정권(7점 이상)입니다! 즉시 런칭을 승인합니다. 🚀
+        </div>
+      `;
+    }
+  }
 }
 
 // ===== Modal =====
@@ -408,7 +643,7 @@ function openModal(type) {
     if (!hasAi) {
       body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">AI 평가가 실행되지 않았습니다.</p>';
     } else {
-      const aiPct = Math.round(Object.values(c.aiScores).reduce((a, b) => a + b, 0) / (aiEvalItems.length * 10) * 100);
+      const aiPct = calculateTpi(c.aiScores);
       // Clean the saved report from any JSON/code artifacts
       let cleanReport = '';
       if (c.aiReport) {
@@ -514,7 +749,7 @@ function refreshOverview() {
   // Average AI score
   const aiCampaigns = campaigns.filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
   if (aiCampaigns.length) {
-    const avgAi = Math.round(aiCampaigns.reduce((a, c) => a + Math.round(Object.values(c.aiScores).reduce((x, y) => x + y, 0) / (aiEvalItems.length * 10) * 100), 0) / aiCampaigns.length);
+    const avgAi = Math.round(aiCampaigns.reduce((a, c) => a + calculateTpi(c.aiScores), 0) / aiCampaigns.length);
     document.getElementById('ovAvgScore').textContent = avgAi + '점';
   } else document.getElementById('ovAvgScore').textContent = '—';
 
@@ -530,7 +765,7 @@ function refreshOverview() {
 
   document.getElementById('overviewBody').innerHTML = campaigns.map(c => {
     const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
-    const aiPct = hasAi ? Math.round(Object.values(c.aiScores).reduce((a, b) => a + b, 0) / (aiEvalItems.length * 10) * 100) : null;
+    const aiPct = hasAi ? calculateTpi(c.aiScores) : null;
     const fb = c.feedback; const hasFb = fb && fb.rating > 0;
     let totalPct = 0;
     if (hasAi && hasFb) totalPct = Math.round(aiPct * 0.7 + ((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100) * 0.3);
@@ -687,7 +922,6 @@ function setCtaLinks(links) {
   const container = document.getElementById('ctaLinksContainer');
   container.innerHTML = '';
   if (!links || links.length === 0) {
-    // Default: 1 empty row
     addCtaLink();
     return;
   }
@@ -725,6 +959,44 @@ function calculateMsgStats(body) {
   };
 }
 
+function getDayOfWeek(dateStr) {
+  if (!dateStr) return '';
+  const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? '' : days[d.getDay()];
+}
+
+function findMostSimilarCampaign(currentCampaign, pastCampaigns) {
+  if (pastCampaigns.length === 0) return null;
+  let bestSimilar = null;
+  let bestScore = -1;
+  const currentDays = getDayOfWeek(currentCampaign.sendDate);
+  const currentChars = currentCampaign.msgStats ? currentCampaign.msgStats.charCount : 0;
+  
+  pastCampaigns.forEach(c => {
+    let score = 0;
+    // 요일 동일성
+    if (getDayOfWeek(c.sendDate) === currentDays) score += 3;
+    // 글자 수 인접성
+    const cChars = c.msgStats ? c.msgStats.charCount : 0;
+    const charDiff = Math.abs(cChars - currentChars);
+    if (charDiff < 50) score += 3;
+    else if (charDiff < 150) score += 2;
+    else if (charDiff < 300) score += 1;
+    
+    // 시간대 일치성 (시 단위)
+    const currentHour = currentCampaign.sendTime ? currentCampaign.sendTime.split(':')[0] : '';
+    const cHour = c.sendTime ? c.sendTime.split(':')[0] : '';
+    if (currentHour && currentHour === cHour) score += 2;
+    
+    if (score > bestScore) {
+      bestScore = score;
+      bestSimilar = c;
+    }
+  });
+  return bestSimilar || pastCampaigns[pastCampaigns.length - 1];
+}
+
 function buildAiPrompt() {
   const body = document.getElementById('aiMsgBody').value.trim();
   const sendDate = document.getElementById('sendDate').value;
@@ -741,67 +1013,79 @@ function buildAiPrompt() {
   const fbWillingness = document.getElementById('fbWillingness').value;
   const fbComment = document.getElementById('fbComment').value.trim();
 
-  // Build historical campaign data for comparison
+  // 1. 이번 캠페인 통계 자동 계산
+  const stats = calculateMsgStats(body);
+  const ctaLinks = getCtaLinks();
+  const currentWeekday = getDayOfWeek(sendDate);
+
+  const currentCampaignData = {
+    name: campaignName || '미지정',
+    sendDate,
+    sendTime,
+    openRate: parseFloat(openRate) || 0,
+    convertRate: parseFloat(convertRate) || 0,
+    msgStats: stats,
+    ctaLinks
+  };
+
+  // 2. 과거 캠페인 데이터 분석 및 대조군 매칭
   const pastCampaigns = loadCampaigns().filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
   let historySection = '';
+  
   if (pastCampaigns.length > 0) {
-    const recent = pastCampaigns.slice(-10); // last 10 campaigns
+    const recent = pastCampaigns.slice(-10); // 최근 최대 10건
     const avgOpen = (recent.reduce((a, c) => a + (c.openRate || 0), 0) / recent.length).toFixed(1);
     const avgConvert = (recent.reduce((a, c) => a + (c.convertRate || 0), 0) / recent.length).toFixed(1);
-    const avgAiTotal = Math.round(recent.reduce((a, c) => {
-      const total = Object.values(c.aiScores).reduce((x, y) => x + y, 0);
-      return a + Math.round(total / (aiEvalItems.length * 10) * 100);
-    }, 0) / recent.length);
+    
+    // 과거 최고 오픈율 캠페인
+    const sortedByOpen = [...recent].sort((a, b) => (b.openRate || 0) - (a.openRate || 0));
+    const best = sortedByOpen[0];
+    
+    // 가장 조건이 유사한 캠페인 매칭
+    const similar = findMostSimilarCampaign(currentCampaignData, recent);
 
-    // Per-item averages
-    const itemAvgs = {};
-    aiEvalItems.forEach(item => {
-      const scores = recent.map(c => c.aiScores[item.id]).filter(s => typeof s === 'number');
-      itemAvgs[item.id] = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-';
-    });
+    historySection = `\n## 📊 과거 발송 캠페인 이력 & 1:1 다차원 피처 대조 데이터
+**반드시 아래 대조군 데이터를 분석하여 이번 캠페인과의 "요일, 시간, 자수, 이모지 수, CTA 수, 실제 성과" 격차의 원인을 설명하세요.**
 
-    // Best & worst campaigns
-    const sorted = [...recent].sort((a, b) => (b.openRate || 0) - (a.openRate || 0));
-    const best = sorted[0];
-    const worst = sorted[sorted.length - 1];
+- **[과거 최근 10건 성과 평균]**
+  - 평균 오픈율: ${avgOpen}% | 평균 전환율: ${avgConvert}%
 
-    historySection = `\n## 📊 과거 캠페인 누적 데이터 (최근 ${recent.length}건 기준)
-**반드시 이 데이터와 비교하여 이번 캠페인의 상대적 위치를 평가하세요.**
-- 평균 오픈율: ${avgOpen}% | 평균 전환율: ${avgConvert}%
-- 평균 AI 종합 점수: ${avgAiTotal}점/100
-- 항목별 평균 점수:
-${aiEvalItems.map(it => `  - ${it.icon} ${it.title}: ${itemAvgs[it.id]}점`).join('\n')}
-- 가장 높은 오픈율 캠페인: "${best.name}" (오픈율 ${best.openRate}%, 전환율 ${best.convertRate}%)
-  - 메시지 요약: ${(best.msgBody || '').slice(0, 80)}${(best.msgBody || '').length > 80 ? '...' : ''}
-- 가장 낮은 오픈율 캠페인: "${worst.name}" (오픈율 ${worst.openRate}%, 전환율 ${worst.convertRate}%)
-  - 메시지 요약: ${(worst.msgBody || '').slice(0, 80)}${(worst.msgBody || '').length > 80 ? '...' : ''}
+- **[대조군 A: 과거 최고 성과 캠페인]**
+  - 캠페인명: "${best.name}" (실제 오픈율: ${best.openRate}%, 전환율: ${best.convertRate}%)
+  - 발송 조건: ${best.sendDate ? getDayOfWeek(best.sendDate) : '미지정'} ${best.sendTime || ''} 발송
+  - 메시지 피처: 글자 수 ${best.msgStats ? best.msgStats.charCount : 0}자 | 이모지 ${best.msgStats ? best.msgStats.emojiCount : 0}개 | CTA 버튼 ${best.ctaLinks ? best.ctaLinks.length : 0}개
+  - 메시지 본문 요약: ${(best.msgBody || '').slice(0, 100)}${(best.msgBody || '').length > 100 ? '...' : ''}
 
-**과거 캠페인과의 비교 분석 시 반드시 포함할 사항:**
-- 이번 캠페인의 오픈율/전환율이 평균 대비 높은지/낮은지 구체적 수치로 비교
-- 성과가 좋았던 캠페인과 이번 캠페인 메시지의 차이점 분석
-- 성과가 낮았던 캠페인과 유사한 패턴이 있는지 경고
-- 항목별로 과거 평균 대비 이번 캠페인의 강약점 비교
+- **[대조군 B: 조건이 가장 유사한 캠페인]**
+  - 캠페인명: "${similar.name}" (실제 오픈율: ${similar.openRate}%, 전환율: ${similar.convertRate}%)
+  - 발송 조건: ${similar.sendDate ? getDayOfWeek(similar.sendDate) : '미지정'} ${similar.sendTime || ''} 발송
+  - 메시지 피처: 글자 수 ${similar.msgStats ? similar.msgStats.charCount : 0}자 | 이모지 ${similar.msgStats ? similar.msgStats.emojiCount : 0}개 | CTA 버튼 ${similar.ctaLinks ? similar.ctaLinks.length : 0}개
+  - 메시지 본문 요약: ${(similar.msgBody || '').slice(0, 100)}${(similar.msgBody || '').length > 100 ? '...' : ''}
+
+**과거 대조군과의 인과관계 비교 피드백 가이드:**
+1. **요일/시간 격차**: 이번 발송 요일(${currentWeekday || '미지정'}) 및 시간대(${sendTime || '미지정'})와 대조군의 발송 조건을 비교하여 오픈율 성과 차이에 미쳤을 행동심리학적 영향을 분석하세요.
+2. **구조적 피처 격차**: 이번 메시지의 글자 수(${stats.charCount}자), 이모지 수(${stats.emojiCount}개), CTA 개수(${ctaLinks.length}개)와 과거 우수작의 피처 차이를 비교하여 가치가 사전 노출되었는지, 인지 피로가 심했는지 요인을 직접 짚어내세요.
 `;
   }
 
   let p = `# 역할 및 분석 원칙
 
-당신은 10년 이상 경력의 CRM 마케팅 메시지 전문 분석가입니다.
+당신은 10년 이상 경력의 CRM 마케팅 메시지 전문 전략 컨설턴트입니다. 
+당신은 아동복지전문기관 초록우산의 알림톡과 메시지 성과를 극대화하는 임무를 맡고 있습니다.
 
-## ⚠️ 핵심 분석 원칙 (반드시 준수)
-1. **절대 일반론 금지**: "제목을 줄이세요", "CTA를 명확히 하세요" 같은 누구나 할 수 있는 일반적 조언은 금지합니다. 반드시 **이 메시지의 실제 문구를 인용**하며 구체적으로 분석하세요.
-2. **원문 인용 필수**: 각 항목 분석 시 메시지 본문에서 관련 문구를 직접 따옴표로 인용하고, 그 문구의 강점/약점을 분석하세요.
-3. **대안 제시 필수**: 개선 제안 시 "~하세요"가 아니라, 실제 대체 문구/표현을 구체적으로 작성하세요. 예: "현재 '전 제품 할인'을 '스킨케어 베스트 3종 40% OFF'로 변경"
-4. **데이터 근거 필수**: 오픈율/전환율 데이터가 있으면 반드시 수치를 인용하며 인과관계를 추론하세요.
-${pastCampaigns.length > 0 ? '5. **과거 비교 필수**: 아래 과거 캠페인 데이터와 반드시 비교 분석하세요. 평균 대비 각 항목의 수준을 구체적 수치로 제시하세요.\n' : ''}
+## ⚠️ 핵심 분석 원칙 (반드시 엄격 준수)
+1. **절대 일반론 금지**: "제목을 후킹하게 쓰세요", "이모지를 적당히 활용하세요" 같은 교과서적인 조언은 금지합니다. 반드시 **이 메시지의 실제 문구를 직접 인용**하여 첨삭하세요.
+2. **원문 인용 필수**: 각 여정 단계 평가 시 메시지 본문에서 관련된 실제 표현을 따옴표("...")로 인용하고 강점과 약점을 꼬집어내세요.
+3. **구체적 대안 제시**: 개선 권장 시 "~로 고치면 좋습니다"가 아닌, **실제 즉시 교체하여 발송 가능한 완성도 높은 대안 메시지 문구를 직접 작성**해 주어야 합니다.
+4. **고객 여정(User Journey) 중심**: 10가지 지표는 오픈/전환의 딱딱한 경계를 넘어 고객이 메시지를 수신하여 클릭하는 행동 흐름에 자연스럽게 녹아드는 단일한 여정 체계입니다.
+${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열된 과거 최고 성과/유사 조건 대조군 캠페인과 이번 캠페인의 피처 격차를 과학적으로 대조 설명하세요.\n' : ''}
+
 ## 📋 이번 캠페인 정보
 `;
 
   if (campaignName) p += `- 캠페인명: ${campaignName}\n`;
-  if (sendDate) p += `- 발송 일자: ${sendDate}\n`;
+  if (sendDate) p += `- 발송 요일: ${currentWeekday} (${sendDate})\n`;
   if (sendTime) p += `- 발송 시간: ${sendTime}\n`;
-  if (sendRecipients) p += `- 발송 인원: ${parseInt(sendRecipients).toLocaleString()}명\n`;
-  if (segment) p += `- 타겟 세그먼트: ${segment}\n`;
   if (openRate) p += `- 실제 오픈율: ${openRate}%\n`;
   if (convertRate) p += `- 실제 전환율: ${convertRate}%\n`;
 
@@ -812,7 +1096,6 @@ ${pastCampaigns.length > 0 ? '5. **과거 비교 필수**: 아래 과거 캠페�
     p += `- 콘텐츠 관련성: ${fbRelevance}/10\n`;
     p += `- 재수신 의향: ${fbWillingness}/10\n`;
     if (fbComment) p += `- 고객 의견: ${fbComment}\n`;
-    p += `\n**피드백 분석 지침:** 고객 별점과 오픈율/전환율 간의 상관관계를 분석하세요. 관련성 점수가 낮다면 타겟팅 미스매치일 가능성을, 재수신 의향이 낮다면 콘텐츠 피로도를 추론하세요.\n`;
   }
 
   // Historical data
@@ -821,42 +1104,149 @@ ${pastCampaigns.length > 0 ? '5. **과거 비교 필수**: 아래 과거 캠페�
   // Message content
   p += `\n## ✉️ 분석 대상 메시지 본문\n`;
   p += `\`\`\`\n${body}\n\`\`\`\n`;
-  if (aiImageBase64) p += `\n(첨부 이미지도 함께 분석해 주세요)\n`;
+  if (aiImageBase64) p += `\n(첨부된 카드뉴스/이미지도 마케팅 맥락에 맞게 함께 평가해 주세요)\n`;
 
   // CTA Links
-  const ctaLinks = getCtaLinks();
   if (ctaLinks.length > 0) {
     p += `\n## 🔗 CTA 버튼/링크 정보 (${ctaLinks.length}개)\n`;
     ctaLinks.forEach((link, i) => {
-      p += `${i + 1}. 버튼명: "${link.name}" → URL: ${link.url}\n`;
+      p += `${i + 1}. 버튼명: "${link.name}" → 연결 URL: ${link.url}\n`;
     });
-    p += `\n**CTA 분석 지침:**
-- 각 CTA 버튼명의 행동 유도 효과를 분석하세요 (동사 사용, 긴급성, 혜택 명시 여부)
-- 다중 CTA(${ctaLinks.length}개)가 사용자의 클릭 결정에 미치는 영향(선택 장애 vs 다양한 옵션)을 평가하세요
-- 버튼명과 연결 URL의 일관성(약속과 도착지 일치 여부)을 분석하세요
-- 랜딩 페이지 연결성 항목 평가 시 이 CTA/URL 정보를 반드시 활용하세요\n`;
   } else {
-    p += `\n**참고:** CTA 버튼/링크가 입력되지 않았습니다. 메시지 본문에서 행동 유도 요소를 직접 찾아 분석하세요.\n`;
+    p += `\n**참고:** 입력된 CTA 버튼이 없습니다. 본문 내에 삽입된 행동 촉구 문구가 있는지 분석하세요.\n`;
   }
 
-  // ===== 메시지 통계 자동 계산 =====
-  const charCount = body.length;
-  const charCountNoSpaces = body.replace(/\s/g, '').length;
-  const emojiRegex = /(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|[\u2600-\u27BF]|[\uFE00-\uFE0F]|[\u200D]|[\uD83C-\uDBFF][\uDC00-\uDFFF])/gu;
-  const emojiMatches = body.match(emojiRegex) || [];
-  const emojiCount = emojiMatches.length;
-  const emojiList = [...new Set(emojiMatches)];
-  const personalizationRegex = /\[.*?\]|\{.*?\}|#{.*?}|\$\{.*?\}|%%.*?%%|@.*?@|고객명|회원님|○○|OO|님의/g;
-  const personalizationMatches = body.match(personalizationRegex) || [];
-  const personalizationCount = personalizationMatches.length;
-  const lineCount = body.split('\n').filter(l => l.trim()).length;
-  const urlRegex = /https?:\/\/[^\s<>"']+/g;
-  const urlsInBody = body.match(urlRegex) || [];
+  // 📐 메시지 정량 분석 (자동 계산)
+  p += `\n## 📐 메시지 정량 분석 데이터
+- 총 글자 수: ${stats.charCount}자 (공백 제외 ${stats.charCountNoSpaces}자)
+- 줄 수: ${stats.lineCount}줄
+- 이모지 사용 수: ${stats.emojiCount}개 (사용됨: ${stats.emojiList.length > 0 ? stats.emojiList.join(' ') : '없음'})
+- 개인화 변수 수: ${stats.personalizationCount}개 (탐지됨: ${stats.personalizationMatches && stats.personalizationMatches.length > 0 ? stats.personalizationMatches.join(', ') : '없음'})
+- 본문 내 URL 수: ${stats.urlCount}개
+- CTA 버튼 수: ${ctaLinks.length}개
+`;
 
-  p += `\n## 📐 메시지 정량 분석 (자동 계산)
-| 항목 | 수치 | 비고 |
+  // Analysis framework
+  p += `
+## 🔬 10대 고객 여정 평가 항목별 채점 규칙
+
+각 항목에 대해 아래 기준에 따라 **이 메시지에 특화**하여 1점~10점 척도로 정밀 채점하세요.
+
+### 01. 첫 줄 및 프리뷰 후킹력 (first_line_attraction)
+- 프리뷰 영역(첫 30자 이내) 평가.
+- 안녕하세요 OOO입니다 같은 상투적이고 뻔한 인사말로 서두를 낭비하면 **3~5점 이하** 엄격 감점.
+- 첫 문장에 마음을 끄는 질문형("올봄, 한 아이의 세상을 바꾼 편지 한 장을 받아보시겠어요?")이나 구체적인 수치 제시형("지난달 모인 12,000개의 마음이 만든 기적") 배치 시 **8~10점** 가점.
+
+### 02. 비주얼 후킹 및 이모지 조화 (visual_emoji_harmony)
+- 이모지 비율의 황금 조화 평가.
+- 이모지가 8개 이상 무질서하게 도배되어 스팸 느낌을 주면 **3~4점** 감점.
+- 텍스트로만 가득해 시각적 쉼표가 전혀 없는 무미건조한 줄글 상태이면 **4~5점** 감점.
+- 텍스트 100자당 1~2개 비율로, 첫 머리와 문단 핵심 앵커 포인트에 이모지가 우아하게 배치된 경우 **9~10점**.
+
+### 03. 개인화 정밀성 & 밀도 (personalization_density)
+- 동적 치환 변수의 자연스러운 결합도 평가.
+- 개인화 요소가 전무하거나 기계적 타이틀에만 구색용으로 쓰인 경우 **1~4점** 감점.
+- 메시지 첫 머리(호칭)와 본문 핵심 맥락 내에 최소 2개 이상의 고객 변수("OOO 후원자님", "[후원일자]")가 유기적으로 녹아들어 진심 어린 손편지 느낌을 주면 **8~10점**.
+
+### 04. 오프닝 맥락 간결성 (opening_conciseness)
+- 본론 직행 속도 평가.
+- "날씨가 많이 추워졌네요..." 등의 상투적인 계절 안부나 장황한 서두로 본론 진입을 3줄 이상 지연시키면 **3~5점** 감점.
+- 첫 1~2문장 내에 메시지 발송 목적과 가치 요약("후원자님의 기부금이 아동에게 전달되어 나타난 변화를 보고해 드립니다")을 두괄식으로 간결하게 타격한 경우 **8~10점**.
+
+### 05. 요일/시간 타이밍 매칭 (timing_optimization)
+- 메시지 성격과 라이프사이클 궁합 평가.
+- 감성/기부 후기: 주중 밤이나 여유로운 목/금 저녁 발송 시 **9~10점**, 바쁜 월/화 아침 발송 시 **3~5점** 감점.
+- 혜택/참여 안내: 주중 화~목 오전 10-11시 또는 오후 14-16시 발송 시 **9~10점**, 심야(22시 이후) 발송 시 **1~2점** 패널티.
+
+### 06. 긴급성 및 즉각적 유도 (urgency_trigger)
+- 즉각적인 상세보기 행동 촉구력 평가.
+- 시간적 마감선이나 긴박감이 전혀 없어 "나중에 봐야지" 하고 지나치게 방치되는 정적인 문구인 경우 **3~5점** 감점.
+- "오늘 밤 12시 마감", "🚨 현재 대기 중인 아동을 위한 긴급 소식" 등 시간/대상 한정성 및 즉시성 명분이 유려하게 가미된 경우 **8~10점**.
+
+### 07. 피로도 제어 및 광고감 통제 (fatigue_control)
+- 브랜드 신뢰감 유지 평가 (역채점 방식).
+- "!!!", "초특가", "대박 혜택" 등 쇼핑/광고 스팸성 어휘나 지나치게 강요하는 느낌표가 가득할수록 **2~4점** 엄격 감점.
+- 정직하고 차분한 어조를 유지하며 팩트 기반 데이터와 후원 아동의 이야기를 품격 있게 전달하여 피로를 최소화한 경우 **8~10점**.
+
+### 08. 혜택 가치 사전 노출도 (value_pre_exposure)
+- 클릭 유도를 위한 보상 선제 노출도 평가.
+- "자세한 내용은 아래 링크에서 보세요"라며 가치를 숨긴 채 클릭만 낚시성으로 유도하면 **2~4점** 감점.
+- 링크 클릭 전에 알림톡 본문 자체에서 후원자로서 얻는 자부심, 감동, 감사 편지 일부, 성과 요약 등을 매력적인 가치 단어로 선행 노출한 경우 **8~10점**.
+
+### 09. 단일 목적 집중도 (cta_architecture)
+- 인지 과부하 방지 평가.
+- "후원하기", "공지사항 보기", "유튜브 구독" 등 서로 다른 동선의 링크가 산만하게 다중으로 흩어져 있으면 **1~4점** 감점.
+- 최종 유도 목적지가 단 1개의 주력 CTA 버튼으로 깔끔하게 집약되어 집중감을 제공하면 **9~10점** 만점.
+
+### 10. CTA 액션 문구 직관성 (cta_actionability)
+- 행동 지향적 버튼 텍스트의 직관성 평가.
+- 가장 흔하고 심심한 버튼명("자세히 보기", "확인", "바로가기") 사용 시 **4~6점**에 머무름.
+- 클릭 후 보람과 구체적 행동이 우아하게 결합된 문구("💌 아이의 감사 편지 읽어보기", "🌻 나의 후원 성과 확인") 사용 시 **9~10점** 가점.
+
+---
+
+## 📄 출력 규격 (반드시 아래 구조만 엄격하게 생성해 주세요)
+
+**첫 번째 JSON 블록** - 10개 항목의 정밀 채점 점수 (1~10점 사이의 정수):
+\`\`\`json
+{"first_line_attraction":7,"visual_emoji_harmony":6,"personalization_density":8,"opening_conciseness":5,"timing_optimization":6,"urgency_trigger":7,"fatigue_control":10,"value_pre_exposure":8,"cta_architecture":7,"cta_actionability":5}
+\`\`\`
+
+**두 번째 JSON 블록** - 각 지표별 **메시지 원문 인용 첨삭이 포함된 구체적 개선안** (일반론 배제, 수정 텍스트가 명확해야 함):
+\`\`\`json
+{"first_line_attraction":"개선안","visual_emoji_harmony":"개선안","personalization_density":"개선안","opening_conciseness":"개선안","timing_optimization":"개선안","urgency_trigger":"개선안","fatigue_control":"개선안","value_pre_exposure":"개선안","cta_architecture":"개선안","cta_actionability":"개선안"}
+\`\`\`
+
+**세 번째 JSON 블록** - 즉시 실행해야 하는 우선순위별 종합 개선 액션 가이드 (3~5개):
+\`\`\`json
+["액션1","액션2","액션3"]
+\`\`\`
+
+## 📝 상세 분석 리포트 (JSON 블록 이후 작성)
+
+### 📐 정량 피처 요약 분석
+| 평가지표 | 이번 메시지 수치 | 마케팅 성과 영향 요약 |
 |---|---|---|
-| 📝 총 글자 수 | ${charCount}자 (공백 제외 ${charCountNoSpaces}자) | SMS 90자, MMS 2000자 기준 |
+| 📝 총 글자 수 | ${stats.charCount}자 | (분량 적정성 분석) |
+| 😄 이모지 개수 | ${stats.emojiCount}개 | (비주얼 밀도 분석) |
+| 🧩 개인화 변수 | ${stats.personalizationCount}개 | (개인 맞춤 수준 분석) |
+| 🎯 CTA 버튼 수 | ${ctaLinks.length}개 | (주의 산만 유무 판정) |
+
+### 🏆 종합 성과 지수 (Total Performance Index) : __점 / 100점
+*계산 산식: [📬 오픈 지수(1~8번 평균) * 0.8] + [🎯 전환 지수(9~10번 평균) * 0.2]*
+${pastCampaigns.length > 0 ? '(과거 최근 10건 평균 대비 +/-__점)' : ''}
+
+### 📋 10단계 고객 행동 여정 상세 리포트
+**아래 10가지 단계에 대해 빠짐없이, 각각 3문장 이상 분석을 제공하세요.**
+*반드시 메시지의 실제 텍스트 문구를 직접 인용하고, 구체적 수정 예시 표현을 작성하고, 대조군이 있을 경우 대조군과의 피처 편차(글자수 차이, 요일 타이밍 차이 등)를 구체적인 수치로 비교 분석에 명시해 주세요.*
+
+1. **첫 줄 및 프리뷰 후킹력**: _점/10
+2. **비주얼 후킹 및 이모지 조화**: _점/10
+3. **개인화 정밀성 & 밀도**: _점/10
+4. **오프닝 맥락 간결성**: _점/10
+5. **요일/시간 타이밍 매칭**: _점/10
+6. **긴급성 및 즉각적 유도**: _점/10
+7. **피로도 제어 및 광고감 통제**: _점/10
+8. **혜택 가치 사전 노출도**: _점/10
+9. **단일 목적 집중도**: _점/10
+10. **CTA 액션 문구 직관성**: _점/10
+
+### 🔍 1:1 다차원 성과 인과관계 분석 (Causal Ablation Analysis)
+${openRate || convertRate ? `
+실제 오픈율 ${openRate}% / 전환율 ${convertRate}%의 근원적 원인을 대조군과 비교 분석합니다.
+- **오픈율 성과 요인 분석**: 발송 조건(${currentWeekday} ${sendTime}) 및 여정 1~8단계 지표 차이가 오픈에 미친 요인 분석 (대조군과 1:1 비교 포함)
+- **전환율 성과 요인 분석**: 여정 9~10단계 지표 및 CTA 구성 차이가 실제 클릭 전환율에 미친 영향 분석 (대조군과 1:1 비교 포함)
+` : `
+실측 성과 수치가 입력되지 않았습니다. 과거 누적 발송 결과와 1:1 비교를 기반으로 할 때 이번 메시지의 **예상 오픈율 범위는 XX%~XX%, 예상 전환율 범위는 XX%~XX%**로 예측 시뮬레이션됩니다. 그 이유와 함께 예측의 근거를 기술하세요.
+`}
+
+### 📝 종합 추천 수정 문구 (A/B 시안 제공)
+*마케터가 즉시 복사해서 발송할 수 있도록 10대 지표를 완벽히 반영하여 교정한 완성본 메시지 시안을 제공하세요.*
+- **A안 (감성 터치 중심 교정본)**: (실제 메시지 완성본 제공)
+- **B안 (정보 가치 중심 교정본)**: (실제 메시지 완성본 제공)
+`;
+  return p;
+}총 글자 수 | ${charCount}자 (공백 제외 ${charCountNoSpaces}자) | SMS 90자, MMS 2000자 기준 |
 | 📏 줄 수 | ${lineCount}줄 | - |
 | 😄 이모지 사용 수 | ${emojiCount}개 | 사용된 이모지: ${emojiList.length > 0 ? emojiList.join(' ') : '없음'} |
 | 🧩 개인화 변수 수 | ${personalizationCount}개 | 탐지: ${personalizationMatches.length > 0 ? personalizationMatches.join(', ') : '없음'} |
@@ -1113,7 +1503,7 @@ function renderAiReportContent(rawText) {
 }
 
 function renderAiScoreGrid() {
-  const totalAi = Object.values(aiScores).reduce((a, b) => a + b, 0); const aiPct = Math.round(totalAi / (aiEvalItems.length * 10) * 100);
+  const aiPct = calculateTpi(aiScores);
   document.getElementById('aiScoreGrid').innerHTML = aiEvalItems.map(item => {
     const s = aiScores[item.id] || 5;
     const color = s >= 8 ? 'var(--accent-emerald)' : s >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';

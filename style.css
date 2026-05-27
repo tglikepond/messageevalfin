@@ -1921,3 +1921,31 @@ input[type="range"]::-webkit-slider-thumb {
 .tooltip-body::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* Positioning Matrix styles */
+@keyframes matrixStarPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 10px rgba(167, 139, 250, 0.8), 0 0 20px rgba(167, 139, 250, 0.4);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    box-shadow: 0 0 20px rgba(167, 139, 250, 1), 0 0 40px rgba(167, 139, 250, 0.7);
+  }
+}
+
+.matrix-star-active {
+  animation: matrixStarPulse 1.2s infinite alternate ease-in-out;
+  border: 2px solid #ffffff !important;
+  z-index: 10;
+}
+
+.matrix-dot-past {
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+.matrix-dot-past:hover {
+  transform: translate(-50%, -50%) scale(1.6);
+  filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));
+  z-index: 8;
+}
