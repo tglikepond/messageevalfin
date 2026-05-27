@@ -1521,7 +1521,7 @@ function renderGenerateResults(messages, serviceType) {
         </div>
         <div class="gen-card-footer">
           <button class="gen-copy-btn" onclick="copyGeneratedMessage(${i})" id="genCopyBtn${i}">
-            📋 전체 복사
+            📋 메시지 복사
           </button>
         </div>
       </div>`;
@@ -1548,7 +1548,7 @@ function copyGeneratedMessage(index) {
       btn.innerHTML = '✅ 복사됨!';
       setTimeout(() => {
         btn.classList.remove('copied');
-        btn.innerHTML = '📋 전체 복사';
+        btn.innerHTML = '📋 메시지 복사';
       }, 2000);
     }
     showToast('📋 문안이 클립보드에 복사되었습니다!');
