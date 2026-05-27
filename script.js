@@ -178,7 +178,7 @@ let lastGeneratedPrompt = `=====================================================
 - JSON 파싱 오류 방지를 위해 텍스트 내 직접 인용구 표현 시 쌍따옴표(") 금지 및 홑따옴표(') 사용 강제`;
 
 // ===== Init =====
-document.addEventListener('DOMContentLoaded', () => {
+function initAll() {
   initTabs();
   initFeedbackStars();
   initDragDrop();
@@ -187,7 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
   updateBadge();
   initGenServiceType();
   initImgGen();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAll);
+} else {
+  initAll();
+}
 
 // ===== Window bindings for HTML onclick handlers =====
 Object.assign(window, {
