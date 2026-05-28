@@ -2407,7 +2407,8 @@ Object.assign(window, {
   removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
   generateMessage, copyGeneratedMessage, copyLastPrompt,
   handleImgGenUpload, removeImgGenImage,
-  generateAlimtokImage, downloadAlimtokImage
+  generateAlimtokImage, downloadAlimtokImage,
+  refreshResultSelector, clearCampaignResult
 });
 
 // ===== Start execution =====
