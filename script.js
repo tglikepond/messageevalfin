@@ -857,50 +857,588 @@ async function deleteCampaign() {
 }
 
 // ===== Overview =====
-function refreshOverview() {
-  const campaigns = loadCampaigns(); const n = campaigns.length;
-  document.getElementById('ovCampaignCount').textContent = n;
+// Globals for Dashboard Overview
+let ovChartInstance = null;
+let overviewCurrentPage = 1;
+const overviewPageSize = 10;
+
+function refreshOverview(preservePage = false) {
+  if (!preservePage) {
+    overviewCurrentPage = 1;
+  }
+
+  const campaigns = loadCampaigns();
+  const n = campaigns.length;
+
+  // Update total campaign count in the card regardless of filters
+  const totalCountEl = document.getElementById('ovTotalCampaignCount');
+  if (totalCountEl) totalCountEl.textContent = `전체: ${n}건`;
+
   if (n === 0) {
-    ['ovAvgOpen', 'ovAvgConvert', 'ovAvgScore', 'ovAvgStar', 'ovAvgRelevance', 'ovAvgWilling'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('ovCampaignCount').textContent = '0';
+    ['ovAvgOpen', 'ovAvgConvert', 'ovAvgScore', 'ovAvgStar', 'ovAvgRelevance', 'ovAvgWilling'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
     document.getElementById('ovFbCount').textContent = '0';
-    document.getElementById('barChart').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:60px 0;">저장된 평가가 없습니다.</p>';
     document.getElementById('overviewBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">평가 없음</td></tr>';
+    
+    // Clear deltas
+    ['ovAvgOpenDelta', 'ovAvgConvertDelta', 'ovAvgScoreDelta'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+
+    // Clear chart
+    if (ovChartInstance) {
+      ovChartInstance.destroy();
+      ovChartInstance = null;
+    }
+
+    // Clear insights
+    document.getElementById('ovBestInsight').innerHTML = '저장된 캠페인이 없습니다.';
+    document.getElementById('ovWorstInsight').innerHTML = '저장된 캠페인이 없습니다.';
     return;
   }
-  document.getElementById('ovAvgOpen').textContent = (campaigns.reduce((a, c) => a + c.openRate, 0) / n).toFixed(1) + '%';
-  document.getElementById('ovAvgConvert').textContent = (campaigns.reduce((a, c) => a + c.convertRate, 0) / n).toFixed(1) + '%';
-  // Average AI score
-  const aiCampaigns = campaigns.filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
-  if (aiCampaigns.length) {
-    const avgAi = Math.round(aiCampaigns.reduce((a, c) => a + calculateTpi(c.aiScores), 0) / aiCampaigns.length);
-    document.getElementById('ovAvgScore').textContent = avgAi + '점';
-  } else document.getElementById('ovAvgScore').textContent = '—';
 
-  const fbC = campaigns.filter(c => c.feedback && c.feedback.rating > 0);
-  document.getElementById('ovFbCount').textContent = fbC.length;
-  if (fbC.length) {
-    document.getElementById('ovAvgStar').textContent = (fbC.reduce((a, c) => a + c.feedback.rating, 0) / fbC.length).toFixed(1);
-    document.getElementById('ovAvgRelevance').textContent = (fbC.reduce((a, c) => a + c.feedback.relevance, 0) / fbC.length).toFixed(1) + '/10';
-    document.getElementById('ovAvgWilling').textContent = (fbC.reduce((a, c) => a + c.feedback.willingness, 0) / fbC.length).toFixed(1) + '/10';
-  } else['ovAvgStar', 'ovAvgRelevance', 'ovAvgWilling'].forEach(id => document.getElementById(id).textContent = '—');
+  // 1. Get filter inputs
+  const searchInput = document.getElementById('ovSearchInput');
+  const periodFilter = document.getElementById('ovPeriodFilter');
+  const typeFilter = document.getElementById('ovTypeFilter');
+  const groupByFilter = document.getElementById('ovGroupByFilter');
 
-  document.getElementById('barChart').innerHTML = campaigns.slice(-8).map(c => `<div class="bar-group"><div class="bar-value">${c.openRate}%</div><div class="bar open" style="height:${Math.max(c.openRate * 3, 8)}px;"></div><div class="bar convert" style="height:${Math.max(c.convertRate * 6, 8)}px;"></div><div class="bar-value">${c.convertRate}%</div><div class="bar-label">${c.name.length > 6 ? c.name.slice(0, 6) + '..' : c.name}</div></div>`).join('');
+  const queryText = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const period = periodFilter ? periodFilter.value : 'all';
+  const type = typeFilter ? typeFilter.value : 'all';
+  const groupBy = groupByFilter ? groupByFilter.value : 'campaign';
 
-  document.getElementById('overviewBody').innerHTML = campaigns.map(c => {
+  // 2. Filter campaigns
+  let filtered = campaigns.filter(c => {
+    // Search filter
+    if (queryText && !c.name.toLowerCase().includes(queryText)) return false;
+
+    // Type filter
+    if (type !== 'all' && c.campaignType !== type) return false;
+
+    // Period filter
+    if (period !== 'all' && c.sendDate) {
+      const sendDateObj = new Date(c.sendDate);
+      if (!isNaN(sendDateObj.getTime())) {
+        const now = new Date();
+        const diffMonths = (now.getFullYear() - sendDateObj.getFullYear()) * 12 + (now.getMonth() - sendDateObj.getMonth());
+        if (period === '3m' && diffMonths > 3) return false;
+        if (period === '6m' && diffMonths > 6) return false;
+        if (period === '12m' && diffMonths > 12) return false;
+      }
+    }
+    return true;
+  });
+
+  // Sort filtered campaigns by sendDate descending for table
+  filtered.sort((a, b) => {
+    const da = a.sendDate || '';
+    const db = b.sendDate || '';
+    return db.localeCompare(da); // Descending (latest first)
+  });
+
+  const m = filtered.length;
+  document.getElementById('ovCampaignCount').textContent = m;
+
+  // 3. Calculate and display core average metrics
+  if (m === 0) {
+    ['ovAvgOpen', 'ovAvgConvert', 'ovAvgScore', 'ovAvgStar', 'ovAvgRelevance', 'ovAvgWilling'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    document.getElementById('ovFbCount').textContent = '0';
+    document.getElementById('overviewBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">필터 조건에 맞는 결과가 없습니다.</td></tr>';
+    
+    // Clear deltas
+    ['ovAvgOpenDelta', 'ovAvgConvertDelta', 'ovAvgScoreDelta'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+
+    if (ovChartInstance) {
+      ovChartInstance.destroy();
+      ovChartInstance = null;
+    }
+    document.getElementById('ovBestInsight').innerHTML = '필터된 캠페인이 없습니다.';
+    document.getElementById('ovWorstInsight').innerHTML = '필터된 캠페인이 없습니다.';
+    return;
+  }
+
+  // Filtered Averages
+  const filteredAvgOpen = filtered.reduce((a, c) => a + (c.openRate || 0), 0) / m;
+  const filteredAvgConvert = filtered.reduce((a, c) => a + (c.convertRate || 0), 0) / m;
+
+  const aiFiltered = filtered.filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
+  const filteredAvgScore = aiFiltered.length ? (aiFiltered.reduce((a, c) => a + calculateTpi(c.aiScores), 0) / aiFiltered.length) : null;
+
+  document.getElementById('ovAvgOpen').textContent = filteredAvgOpen.toFixed(1) + '%';
+  document.getElementById('ovAvgConvert').textContent = filteredAvgConvert.toFixed(1) + '%';
+  document.getElementById('ovAvgScore').textContent = filteredAvgScore !== null ? Math.round(filteredAvgScore) + '점' : '—';
+
+  // Overall Lifetime Averages (for delta calculation)
+  const totalAvgOpen = campaigns.reduce((a, c) => a + (c.openRate || 0), 0) / n;
+  const totalAvgConvert = campaigns.reduce((a, c) => a + (c.convertRate || 0), 0) / n;
+  const aiAll = campaigns.filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
+  const totalAvgScore = aiAll.length ? (aiAll.reduce((a, c) => a + calculateTpi(c.aiScores), 0) / aiAll.length) : null;
+
+  // Render deltas
+  renderDeltaBadge('ovAvgOpenDelta', filteredAvgOpen, totalAvgOpen, '%');
+  renderDeltaBadge('ovAvgConvertDelta', filteredAvgConvert, totalAvgConvert, '%');
+  if (filteredAvgScore !== null && totalAvgScore !== null) {
+    renderDeltaBadge('ovAvgScoreDelta', filteredAvgScore, totalAvgScore, '점');
+  } else {
+    const el = document.getElementById('ovAvgScoreDelta');
+    if (el) el.innerHTML = '';
+  }
+
+  // Feedback stats
+  const fbFiltered = filtered.filter(c => c.feedback && c.feedback.rating > 0);
+  document.getElementById('ovFbCount').textContent = fbFiltered.length;
+  if (fbFiltered.length) {
+    document.getElementById('ovAvgStar').textContent = (fbFiltered.reduce((a, c) => a + c.feedback.rating, 0) / fbFiltered.length).toFixed(1);
+    document.getElementById('ovAvgRelevance').textContent = (fbFiltered.reduce((a, c) => a + c.feedback.relevance, 0) / fbFiltered.length).toFixed(1) + '/10';
+    document.getElementById('ovAvgWilling').textContent = (fbFiltered.reduce((a, c) => a + c.feedback.willingness, 0) / fbFiltered.length).toFixed(1) + '/10';
+  } else {
+    ['ovAvgStar', 'ovAvgRelevance', 'ovAvgWilling'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+  }
+
+  // 4. Render Insights (Best vs Worst)
+  updateOverviewInsights(filtered);
+
+  // 5. Render Chart.js
+  renderOverviewChart(filtered, groupBy);
+
+  // 6. Pagination & Render Table
+  renderOverviewTable(filtered);
+}
+
+function renderDeltaBadge(elementId, filteredVal, totalVal, unit) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const diff = filteredVal - totalVal;
+  if (Math.abs(diff) < 0.05) {
+    el.innerHTML = `<span class="trend-badge flat">전체 평균 수준</span>`;
+  } else if (diff > 0) {
+    el.innerHTML = `<span class="trend-badge up">▲ ${diff.toFixed(1)}${unit} (평균 대비)</span>`;
+  } else {
+    el.innerHTML = `<span class="trend-badge down">▼ ${Math.abs(diff).toFixed(1)}${unit} (평균 대비)</span>`;
+  }
+}
+
+function updateOverviewInsights(filtered) {
+  const bestEl = document.getElementById('ovBestInsight');
+  const worstEl = document.getElementById('ovWorstInsight');
+  if (!bestEl || !worstEl) return;
+
+  // Calculate total composite score for each campaign in the filtered list
+  const scoredCampaigns = filtered.map(c => {
+    const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
+    const aiPct = hasAi ? calculateTpi(c.aiScores) : 0;
+    const fb = c.feedback;
+    const hasFb = fb && fb.rating > 0;
+
+    let totalPct = 0;
+    if (hasAi && hasFb) {
+      totalPct = Math.round(aiPct * 0.7 + ((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100) * 0.3);
+    } else if (hasAi) {
+      totalPct = aiPct;
+    } else if (hasFb) {
+      totalPct = Math.round((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100);
+    } else {
+      // Fallback: estimate from open/convert rates
+      totalPct = Math.round(c.openRate * 2 + c.convertRate * 10);
+    }
+    return { campaign: c, totalPct };
+  });
+
+  // Sort by totalPct descending
+  scoredCampaigns.sort((a, b) => b.totalPct - a.totalPct);
+
+  const best = scoredCampaigns[0];
+  const worst = scoredCampaigns[scoredCampaigns.length - 1];
+
+  if (best) {
+    const typeStr = best.campaign.campaignType === 'feedback' ? '피드백/결과보고' : best.campaign.campaignType === 'benefit' ? '혜택/참여활동' : '기타';
+    bestEl.innerHTML = `
+      <strong>${best.campaign.name}</strong><br>
+      <span style="font-size:11px;color:var(--text-secondary);">발송일: ${best.campaign.sendDate || '—'} | 유형: ${typeStr}</span><br>
+      📊 성과: 오픈율 <strong>${best.campaign.openRate}%</strong>, 전환율 <strong>${best.campaign.convertRate}%</strong><br>
+      ✨ 종합 성과 지수: <strong style="color:var(--accent-cyan); font-size: 14px;">${best.totalPct}점</strong>
+    `;
+  } else {
+    bestEl.innerHTML = '데이터 없음';
+  }
+
+  if (worst && scoredCampaigns.length > 1) {
+    const typeStr = worst.campaign.campaignType === 'feedback' ? '피드백/결과보고' : worst.campaign.campaignType === 'benefit' ? '혜택/참여활동' : '기타';
+    worstEl.innerHTML = `
+      <strong>${worst.campaign.name}</strong><br>
+      <span style="font-size:11px;color:var(--text-secondary);">발송일: ${worst.campaign.sendDate || '—'} | 유형: ${typeStr}</span><br>
+      📊 성과: 오픈율 <strong>${worst.campaign.openRate}%</strong>, 전환율 <strong>${worst.campaign.convertRate}%</strong><br>
+      ✨ 종합 성과 지수: <strong style="color:var(--accent-rose); font-size: 14px;">${worst.totalPct}점</strong>
+    `;
+  } else {
+    worstEl.innerHTML = '비교할 대상이 부족하거나 데이터가 없습니다.';
+  }
+}
+
+function renderOverviewChart(filtered, groupBy) {
+  const ctx = document.getElementById('ovChart');
+  if (!ctx) return;
+
+  // Destroy existing chart to prevent overlay issues
+  if (ovChartInstance) {
+    ovChartInstance.destroy();
+    ovChartInstance = null;
+  }
+
+  let labels = [];
+  let openRates = [];
+  let convertRates = [];
+  let tpiScores = [];
+  let sendCounts = [];
+
+  if (groupBy === 'month') {
+    // 1. Group by month
+    const monthlyData = {};
+    filtered.forEach(c => {
+      if (!c.sendDate) return;
+      const month = c.sendDate.slice(0, 7); // YYYY-MM
+      if (!monthlyData[month]) {
+        monthlyData[month] = {
+          sendCountSum: 0,
+          openCountSum: 0,
+          convertCountSum: 0,
+          tpiSum: 0,
+          tpiCount: 0
+        };
+      }
+      const data = monthlyData[month];
+      data.sendCountSum += (c.sendCount || 0);
+      data.openCountSum += (c.openCount || 0);
+      data.convertCountSum += (c.convertCount || 0);
+
+      const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
+      if (hasAi) {
+        data.tpiSum += calculateTpi(c.aiScores);
+        data.tpiCount++;
+      }
+    });
+
+    // Sort months ascending
+    const sortedMonths = Object.keys(monthlyData).sort((a, b) => a.localeCompare(b));
+    labels = sortedMonths;
+    sortedMonths.forEach(m => {
+      const data = monthlyData[m];
+      const openRate = data.sendCountSum > 0 ? (data.openCountSum / data.sendCountSum * 100) : 0;
+      const convertRate = data.openCountSum > 0 ? (data.convertCountSum / data.openCountSum * 100) : 0;
+      const avgTpi = data.tpiCount > 0 ? (data.tpiSum / data.tpiCount) : 0;
+
+      openRates.push(parseFloat(openRate.toFixed(1)));
+      convertRates.push(parseFloat(convertRate.toFixed(1)));
+      tpiScores.push(Math.round(avgTpi));
+      sendCounts.push(data.sendCountSum);
+    });
+  } else {
+    // 2. Individual Campaigns chronologically (ascending date)
+    const chrono = [...filtered].sort((a, b) => {
+      const da = a.sendDate || '';
+      const db = b.sendDate || '';
+      return da.localeCompare(db);
+    });
+
+    // Limit to latest 15 to keep it readable, but let them know it scales
+    const displayed = chrono.slice(-15);
+
+    labels = displayed.map(c => {
+      const name = c.name;
+      return name.length > 8 ? name.slice(0, 8) + '..' : name;
+    });
+
+    openRates = displayed.map(c => c.openRate || 0);
+    convertRates = displayed.map(c => c.convertRate || 0);
+    tpiScores = displayed.map(c => {
+      const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
+      return hasAi ? calculateTpi(c.aiScores) : 0;
+    });
+    sendCounts = displayed.map(c => c.sendCount || 0);
+  }
+
+  // Render Chart.js Dual Y-axis
+  ovChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '발송수 (건)',
+          data: sendCounts,
+          type: 'bar',
+          yAxisID: 'yVolume',
+          backgroundColor: 'rgba(148, 163, 184, 0.08)',
+          borderColor: 'rgba(148, 163, 184, 0.15)',
+          borderWidth: 1,
+          barThickness: groupBy === 'month' ? 40 : 20,
+          order: 4
+        },
+        {
+          label: '오픈율 (%)',
+          data: openRates,
+          type: 'line',
+          yAxisID: 'yPercentage',
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderWidth: 3,
+          tension: 0.3,
+          pointBackgroundColor: '#3b82f6',
+          pointRadius: 4,
+          order: 1
+        },
+        {
+          label: '전환율 (%)',
+          data: convertRates,
+          type: 'line',
+          yAxisID: 'yPercentage',
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 3,
+          tension: 0.3,
+          pointBackgroundColor: '#10b981',
+          pointRadius: 4,
+          order: 2
+        },
+        {
+          label: '종합 지수 (TPI)',
+          data: tpiScores,
+          type: 'line',
+          yAxisID: 'yPercentage',
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          tension: 0.3,
+          pointBackgroundColor: '#8b5cf6',
+          pointRadius: 3,
+          order: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#94a3b8',
+            font: {
+              family: 'Spoqa Han Sans Neo',
+              size: 11
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#f1f5f9',
+          bodyColor: '#e2e8f0',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          titleFont: { family: 'Spoqa Han Sans Neo', size: 12, weight: 'bold' },
+          bodyFont: { family: 'Spoqa Han Sans Neo', size: 11 }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            font: { family: 'Spoqa Han Sans Neo', size: 10 }
+          }
+        },
+        yPercentage: {
+          type: 'linear',
+          position: 'left',
+          min: 0,
+          max: 100,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.04)'
+          },
+          ticks: {
+            color: '#3b82f6',
+            callback: function(value) { return value + '%'; },
+            font: { family: 'Spoqa Han Sans Neo', size: 10 }
+          }
+        },
+        yVolume: {
+          type: 'linear',
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            callback: function(value) { return value.toLocaleString() + '건'; },
+            font: { family: 'Spoqa Han Sans Neo', size: 10 }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderOverviewTable(filtered) {
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / overviewPageSize));
+
+  if (overviewCurrentPage > totalPages) {
+    overviewCurrentPage = totalPages;
+  }
+  if (overviewCurrentPage < 1) {
+    overviewCurrentPage = 1;
+  }
+
+  const startIdx = (overviewCurrentPage - 1) * overviewPageSize;
+  const endIdx = startIdx + overviewPageSize;
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  const prevBtn = document.getElementById('ovPrevPageBtn');
+  const nextBtn = document.getElementById('ovNextPageBtn');
+  const indicator = document.getElementById('ovPageIndicator');
+
+  if (indicator) {
+    indicator.textContent = `Page ${overviewCurrentPage} of ${totalPages}`;
+  }
+
+  if (prevBtn) {
+    prevBtn.disabled = overviewCurrentPage === 1;
+    prevBtn.style.opacity = overviewCurrentPage === 1 ? '0.5' : '1';
+    prevBtn.style.cursor = overviewCurrentPage === 1 ? 'not-allowed' : 'pointer';
+  }
+
+  if (nextBtn) {
+    nextBtn.disabled = overviewCurrentPage === totalPages;
+    nextBtn.style.opacity = overviewCurrentPage === totalPages ? '0.5' : '1';
+    nextBtn.style.cursor = overviewCurrentPage === totalPages ? 'not-allowed' : 'pointer';
+  }
+
+  const tbody = document.getElementById('overviewBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = pageItems.map(c => {
     const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
     const aiPct = hasAi ? calculateTpi(c.aiScores) : null;
-    const fb = c.feedback; const hasFb = fb && fb.rating > 0;
+    const fb = c.feedback;
+    const hasFb = fb && fb.rating > 0;
+
     let totalPct = 0;
-    if (hasAi && hasFb) totalPct = Math.round(aiPct * 0.7 + ((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100) * 0.3);
-    else if (hasAi) totalPct = aiPct;
-    else if (hasFb) totalPct = Math.round((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100);
+    if (hasAi && hasFb) {
+      totalPct = Math.round(aiPct * 0.7 + ((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100) * 0.3);
+    } else if (hasAi) {
+      totalPct = aiPct;
+    } else if (hasFb) {
+      totalPct = Math.round((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100);
+    }
+
     const typeLabel = c.campaignType === 'feedback' ? '📋 피드백' : c.campaignType === 'benefit' ? '🎁 혜택' : c.campaignType === 'other' ? '💬 기타' : '—';
-    return `<tr><td><strong>${c.name}</strong></td><td>${c.sendDate || '—'}</td><td>${typeLabel}</td>
-      <td style="color:var(--accent-blue)">${c.openRate}%</td><td style="color:var(--accent-emerald)">${c.convertRate}%</td>
+
+    return `<tr>
+      <td><strong>${c.name}</strong></td>
+      <td>${c.sendDate || '—'}</td>
+      <td>${typeLabel}</td>
+      <td style="color:var(--accent-blue)">${c.openRate}%</td>
+      <td style="color:var(--accent-emerald)">${c.convertRate}%</td>
       <td>${hasAi ? `<span class="score-badge ${aiPct >= 75 ? 'high' : aiPct >= 50 ? 'mid' : 'low'}">${aiPct}</span>` : '—'}</td>
       <td>${hasFb ? '★'.repeat(fb.rating) + '☆'.repeat(5 - fb.rating) : '—'}</td>
-      <td><strong>${totalPct || '—'}</strong></td></tr>`;
+      <td><strong>${totalPct || '—'}</strong></td>
+    </tr>`;
   }).join('');
+}
+
+function changeOverviewPage(dir) {
+  overviewCurrentPage += dir;
+  refreshOverview(true);
+}
+
+function exportOverviewToCsv() {
+  const campaigns = loadCampaigns();
+  if (campaigns.length === 0) {
+    showToast('⚠️ 내보낼 캠페인 데이터가 없습니다.');
+    return;
+  }
+
+  const searchInput = document.getElementById('ovSearchInput');
+  const periodFilter = document.getElementById('ovPeriodFilter');
+  const typeFilter = document.getElementById('ovTypeFilter');
+
+  const queryText = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const period = periodFilter ? periodFilter.value : 'all';
+  const type = typeFilter ? typeFilter.value : 'all';
+
+  let filtered = campaigns.filter(c => {
+    if (queryText && !c.name.toLowerCase().includes(queryText)) return false;
+    if (type !== 'all' && c.campaignType !== type) return false;
+    if (period !== 'all' && c.sendDate) {
+      const sendDateObj = new Date(c.sendDate);
+      if (!isNaN(sendDateObj.getTime())) {
+        const now = new Date();
+        const diffMonths = (now.getFullYear() - sendDateObj.getFullYear()) * 12 + (now.getMonth() - sendDateObj.getMonth());
+        if (period === '3m' && diffMonths > 3) return false;
+        if (period === '6m' && diffMonths > 6) return false;
+        if (period === '12m' && diffMonths > 12) return false;
+      }
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    showToast('⚠️ 현재 필터 조건에 부합하는 데이터가 없습니다.');
+    return;
+  }
+
+  const headers = ['캠페인명', '발송일자', '발송유형', '발송수', '오픈수', '후원신청수', '오픈율(%)', '전환율(%)', 'AI평가점수', '별점'];
+  const rows = filtered.map(c => {
+    const typeStr = c.campaignType === 'feedback' ? '피드백/결과보고' : c.campaignType === 'benefit' ? '혜택/참여활동' : '기타';
+    const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0;
+    const aiPct = hasAi ? calculateTpi(c.aiScores) : '';
+    const fbRating = c.feedback && c.feedback.rating > 0 ? c.feedback.rating : '';
+
+    return [
+      `"${c.name.replace(/"/g, '""')}"`,
+      c.sendDate || '',
+      typeStr,
+      c.sendCount || 0,
+      c.openCount || 0,
+      c.convertCount || 0,
+      c.openRate,
+      c.convertRate,
+      aiPct,
+      fbRating
+    ];
+  });
+
+  const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `message_eval_overview_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast('📥 CSV 파일이 내보내기 되었습니다.');
 }
 
 // ===== Utility =====
@@ -2408,7 +2946,8 @@ Object.assign(window, {
   generateMessage, copyGeneratedMessage, copyLastPrompt,
   handleImgGenUpload, removeImgGenImage,
   generateAlimtokImage, downloadAlimtokImage,
-  refreshResultSelector, clearCampaignResult
+  refreshResultSelector, clearCampaignResult,
+  refreshOverview, changeOverviewPage, exportOverviewToCsv
 });
 
 // ===== Start execution =====

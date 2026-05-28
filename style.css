@@ -1949,3 +1949,46 @@ input[type="range"]::-webkit-slider-thumb {
   filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));
   z-index: 8;
 }
+
+/* ===== Dashboard Trend Indicators & Layout ===== */
+.trend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.trend-badge.up {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.trend-badge.down {
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--accent-rose);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+.trend-badge.flat {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.comparison-card.insight-best {
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.05);
+  transition: all 0.3s ease;
+}
+.comparison-card.insight-best:hover {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+.comparison-card.insight-worst {
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.05);
+  transition: all 0.3s ease;
+}
+.comparison-card.insight-worst:hover {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
