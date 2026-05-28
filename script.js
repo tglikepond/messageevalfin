@@ -177,6 +177,47 @@ let lastGeneratedPrompt = `=====================================================
 - 데이터의 안정적 수신을 위해 'application/json' 구조로 출력 강제
 - JSON 파싱 오류 방지를 위해 텍스트 내 직접 인용구 표현 시 쌍따옴표(") 금지 및 홑따옴표(') 사용 강제`;
 
+// ===== Rate Calculators =====
+function updateCalculatedRates() {
+  const sendCount = parseFloat(document.getElementById('sendCount').value) || 0;
+  const openCount = parseFloat(document.getElementById('openCount').value) || 0;
+  const convertCount = parseFloat(document.getElementById('convertCount').value) || 0;
+
+  const openRateEl = document.getElementById('calculatedOpenRate');
+  const convertRateEl = document.getElementById('calculatedConvertRate');
+
+  if (openCount > sendCount && sendCount > 0) {
+    openRateEl.style.color = 'var(--accent-rose)';
+    openRateEl.style.fontWeight = '800';
+  } else {
+    openRateEl.style.color = 'var(--accent-blue)';
+    openRateEl.style.fontWeight = '700';
+  }
+
+  if (convertCount > openCount && openCount > 0) {
+    convertRateEl.style.color = 'var(--accent-rose)';
+    convertRateEl.style.fontWeight = '800';
+  } else {
+    convertRateEl.style.color = 'var(--accent-emerald)';
+    convertRateEl.style.fontWeight = '700';
+  }
+
+  const openRate = sendCount > 0 ? (openCount / sendCount) * 100 : 0;
+  const convertRate = openCount > 0 ? (convertCount / openCount) * 100 : 0;
+
+  openRateEl.value = sendCount > 0 ? openRate.toFixed(1) + '%' : '—';
+  convertRateEl.value = openCount > 0 ? convertRate.toFixed(1) + '%' : '—';
+}
+
+function initRateCalculators() {
+  ['sendCount', 'openCount', 'convertCount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', updateCalculatedRates);
+    }
+  });
+}
+
 // ===== Init =====
 function initAll() {
   initTabs();
@@ -186,6 +227,7 @@ function initAll() {
   updateBadge();
   initGenServiceType();
   initImgGen();
+  initRateCalculators();
 }
 
 
@@ -215,15 +257,39 @@ function setStars(r) { document.querySelectorAll('.feedback-star').forEach(s => 
 async function saveCampaignData() {
   const name = document.getElementById('campaignName').value.trim();
   if (!name) { showToast('⚠️ 캠페인명을 입력해 주세요.'); return false; }
+  
+  const campaignType = document.getElementById('campaignType').value;
+  if (!campaignType) { showToast('⚠️ 발송 유형을 선택해 주세요.'); return false; }
+
+  const sendCountVal = document.getElementById('sendCount').value;
+  const openCountVal = document.getElementById('openCount').value;
+  const convertCountVal = document.getElementById('convertCount').value;
+
+  if (sendCountVal === '' || openCountVal === '' || convertCountVal === '') {
+    showToast('⚠️ 발송수, 오픈수, 후원신청수를 모두 입력해 주세요.');
+    return false;
+  }
+
+  const sendCount = parseFloat(sendCountVal) || 0;
+  const openCount = parseFloat(openCountVal) || 0;
+  const convertCount = parseFloat(convertCountVal) || 0;
+
+  const openRate = sendCount > 0 ? Math.round((openCount / sendCount) * 1000) / 10 : 0;
+  const convertRate = openCount > 0 ? Math.round((convertCount / openCount) * 1000) / 10 : 0;
+
   const campaign = {
     id: currentCampaignId || Date.now(), name,
+    campaignType,
     sendDate: document.getElementById('sendDate').value,
     sendTime: document.getElementById('sendTime').value,
-    sendRecipients: 0,
+    sendRecipients: sendCount,
+    sendCount,
+    openCount,
+    convertCount,
     channel: '',
     segment: '',
-    openRate: parseFloat(document.getElementById('actualOpenRate').value) || 0,
-    convertRate: parseFloat(document.getElementById('actualConvertRate').value) || 0,
+    openRate,
+    convertRate,
     msgTitle: '',
     msgBody: document.getElementById('aiMsgBody').value.trim(),
     ctaLinks: getCtaLinks(),
@@ -340,9 +406,16 @@ function loadCampaignResult() {
   document.getElementById('resultSummarySection').style.display = 'block';
 
   // Campaign info
+  const typeLabel = c.campaignType === 'feedback' ? '📋 피드백/결과보고' : c.campaignType === 'benefit' ? '🎁 혜택/참여활동' : c.campaignType === 'other' ? '💬 기타' : '—';
+  let countsHtml = '';
+  if (c.sendCount !== undefined) {
+    countsHtml = `<strong>발송수:</strong> ${c.sendCount.toLocaleString()}건 · <strong>오픈수:</strong> ${c.openCount.toLocaleString()}건 · <strong>후원신청수:</strong> ${c.convertCount.toLocaleString()}건<br>`;
+  }
   document.getElementById('resultCampaignSummary').innerHTML = `
     <strong>캠페인명:</strong> ${c.name}<br>
+    <strong>발송 유형:</strong> ${typeLabel}<br>
     <strong>발송일시:</strong> ${c.sendDate || '미입력'} ${c.sendTime || ''}<br>
+    ${countsHtml}
     <strong>오픈율:</strong> <span style="color:var(--accent-blue)">${c.openRate}%</span> · 
     <strong>전환율:</strong> <span style="color:var(--accent-emerald)">${c.convertRate}%</span>`;
 
@@ -760,7 +833,8 @@ function refreshOverview() {
     if (hasAi && hasFb) totalPct = Math.round(aiPct * 0.7 + ((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100) * 0.3);
     else if (hasAi) totalPct = aiPct;
     else if (hasFb) totalPct = Math.round((fb.rating * 2 + fb.relevance + fb.willingness) / 30 * 100);
-    return `<tr><td><strong>${c.name}</strong></td><td>${c.sendDate || '—'}</td><td>${c.channel || '—'}</td>
+    const typeLabel = c.campaignType === 'feedback' ? '📋 피드백' : c.campaignType === 'benefit' ? '🎁 혜택' : c.campaignType === 'other' ? '💬 기타' : '—';
+    return `<tr><td><strong>${c.name}</strong></td><td>${c.sendDate || '—'}</td><td>${typeLabel}</td>
       <td style="color:var(--accent-blue)">${c.openRate}%</td><td style="color:var(--accent-emerald)">${c.convertRate}%</td>
       <td>${hasAi ? `<span class="score-badge ${aiPct >= 75 ? 'high' : aiPct >= 50 ? 'mid' : 'low'}">${aiPct}</span>` : '—'}</td>
       <td>${hasFb ? '★'.repeat(fb.rating) + '☆'.repeat(5 - fb.rating) : '—'}</td>
@@ -771,7 +845,9 @@ function refreshOverview() {
 // ===== Utility =====
 function startNewEval() { currentCampaignId = null; aiScores = {}; aiImprovements = {}; aiRecommendations = []; selectedCampaignCache = null; aiCompleted = false; resetAll(); switchTab('campaign'); }
 function resetAll() {
-  ['campaignName', 'sendDate', 'actualOpenRate', 'actualConvertRate', 'aiMsgBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['campaignName', 'campaignType', 'sendDate', 'sendCount', 'openCount', 'convertCount', 'aiMsgBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('calculatedOpenRate').value = '—';
+  document.getElementById('calculatedConvertRate').value = '—';
   document.getElementById('sendTime').value = '09:00';
   feedbackRating = 0; setStars(0); document.getElementById('starLabel').textContent = '별점을 선택해 주세요';
   ['fbRelevance', 'fbWillingness'].forEach(id => { document.getElementById(id).value = 5; });
@@ -814,7 +890,14 @@ function exportReport() {
   const id = parseInt(document.getElementById('resultCampaignSelect').value); if (!id) { showToast('⚠️ 캠페인 선택'); return; }
   const c = loadCampaigns().find(x => x.id === id); if (!c) return;
   const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0; const fb = c.feedback; const hasFb = fb && fb.rating > 0;
-  let r = `메시지 성과 평가 리포트\n${'='.repeat(40)}\n캠페인: ${c.name}\n발송일: ${c.sendDate || '미입력'}\n발송시간: ${c.sendTime || '미입력'}\n오픈율: ${c.openRate}% | 전환율: ${c.convertRate}%\n`;
+  const typeLabel = c.campaignType === 'feedback' ? '📋 피드백/결과보고' : c.campaignType === 'benefit' ? '🎁 혜택/참여활동' : c.campaignType === 'other' ? '💬 기타' : '—';
+  
+  let r = `메시지 성과 평가 리포트\n${'='.repeat(40)}\n캠페인: ${c.name}\n발송 유형: ${typeLabel}\n발송일: ${c.sendDate || '미입력'}\n발송시간: ${c.sendTime || '미입력'}\n`;
+  if (c.sendCount !== undefined) {
+    r += `발송수: ${c.sendCount.toLocaleString()}건 | 오픈수: ${c.openCount.toLocaleString()}건 | 후원신청수: ${c.convertCount.toLocaleString()}건\n`;
+  }
+  r += `오픈율: ${c.openRate}% | 전환율: ${c.convertRate}%\n`;
+  
   if (hasAi) { r += `\n[AI 평가 10항목]\n${'-'.repeat(40)}\n`; aiEvalItems.forEach((it, i) => { r += `${i + 1}. ${it.title}: ${c.aiScores[it.id] || '-'}/10\n`; }); }
   if (hasFb) r += `\n[고객 피드백]\n${'-'.repeat(40)}\n별점: ${fb.rating}/5\n관련성: ${fb.relevance}/10\n재수신: ${fb.willingness}/10\n의견: ${fb.comment || '없음'}\n`;
   const blob = new Blob([r], { type: 'text/plain;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `eval_${c.name}_${new Date().toISOString().slice(0, 10)}.txt`; a.click(); showToast('리포트 다운로드 완료!');
@@ -998,8 +1081,18 @@ function buildAiPrompt() {
   const sendDate = document.getElementById('sendDate').value;
   const sendTime = document.getElementById('sendTime').value;
   const sendRecipients = '';
-  const openRate = document.getElementById('actualOpenRate').value;
-  const convertRate = document.getElementById('actualConvertRate').value;
+  
+  const sendCountVal = document.getElementById('sendCount').value;
+  const openCountVal = document.getElementById('openCount').value;
+  const convertCountVal = document.getElementById('convertCount').value;
+  
+  const sendCount = parseFloat(sendCountVal) || 0;
+  const openCount = parseFloat(openCountVal) || 0;
+  const convertCount = parseFloat(convertCountVal) || 0;
+  
+  const openRate = sendCount > 0 ? ((openCount / sendCount) * 100).toFixed(1) : 0;
+  const convertRate = openCount > 0 ? ((convertCount / openCount) * 100).toFixed(1) : 0;
+  const campaignType = document.getElementById('campaignType').value;
   const segment = '';
   const campaignName = document.getElementById('campaignName').value.trim();
 
@@ -1016,6 +1109,7 @@ function buildAiPrompt() {
 
   const currentCampaignData = {
     name: campaignName || '미지정',
+    campaignType,
     sendDate,
     sendTime,
     openRate: parseFloat(openRate) || 0,
@@ -1079,9 +1173,14 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 ## 📋 이번 캠페인 정보
 `;
 
+  const campaignTypeLabel = campaignType === 'feedback' ? '📋 피드백/결과보고' : campaignType === 'benefit' ? '🎁 혜택/참여활동' : campaignType === 'other' ? '💬 기타' : '미지정';
   if (campaignName) p += `- 캠페인명: ${campaignName}\n`;
+  if (campaignType) p += `- 발송 유형: ${campaignTypeLabel}\n`;
   if (sendDate) p += `- 발송 요일: ${currentWeekday} (${sendDate})\n`;
   if (sendTime) p += `- 발송 시간: ${sendTime}\n`;
+  if (sendCountVal) p += `- 발송수: ${parseFloat(sendCountVal).toLocaleString()}건\n`;
+  if (openCountVal) p += `- 오픈수: ${parseFloat(openCountVal).toLocaleString()}건\n`;
+  if (convertCountVal) p += `- 후원신청수: ${parseFloat(convertCountVal).toLocaleString()}건\n`;
   if (openRate) p += `- 실제 오픈율: ${openRate}%\n`;
   if (convertRate) p += `- 실제 전환율: ${convertRate}%\n`;
 

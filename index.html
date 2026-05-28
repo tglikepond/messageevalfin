@@ -78,6 +78,14 @@
           <div class="form-group"><label class="form-label">캠페인명 <span style="color:var(--accent-rose)">*</span></label>
             <input class="form-input" id="campaignName" placeholder="예: 봄맞이 스킨케어 프로모션">
           </div>
+          <div class="form-group"><label class="form-label">발송 유형 <span style="color:var(--accent-rose)">*</span></label>
+            <select class="form-select" id="campaignType">
+              <option value="">유형을 선택하세요</option>
+              <option value="feedback">📋 피드백/결과보고</option>
+              <option value="benefit">🎁 혜택/참여활동</option>
+              <option value="other">💬 기타</option>
+            </select>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">📅 발송 일자</label>
@@ -94,13 +102,22 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">실제 오픈율 (%)</label>
-            <input class="form-input" type="number" id="actualOpenRate" placeholder="예: 32.5" min="0" max="100"
-              step="0.1">
+          <div class="form-group"><label class="form-label">발송수 (건) <span style="color:var(--accent-rose)">*</span></label>
+            <input class="form-input" type="number" id="sendCount" placeholder="예: 10000" min="0">
           </div>
-          <div class="form-group"><label class="form-label">실제 전환율 (%)</label>
-            <input class="form-input" type="number" id="actualConvertRate" placeholder="예: 8.7" min="0" max="100"
-              step="0.1">
+          <div class="form-group"><label class="form-label">오픈수 (건) <span style="color:var(--accent-rose)">*</span></label>
+            <input class="form-input" type="number" id="openCount" placeholder="예: 3000" min="0">
+          </div>
+          <div class="form-group"><label class="form-label">후원신청수 (건) <span style="color:var(--accent-rose)">*</span></label>
+            <input class="form-input" type="number" id="convertCount" placeholder="예: 260" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">계산된 오픈율 (%)</label>
+            <input class="form-input" type="text" id="calculatedOpenRate" readonly placeholder="자동 계산" style="background:rgba(255,255,255,0.05); color:var(--accent-blue); font-weight:700;">
+          </div>
+          <div class="form-group"><label class="form-label">계산된 전환율 (%)</label>
+            <input class="form-input" type="text" id="calculatedConvertRate" readonly placeholder="자동 계산" style="background:rgba(255,255,255,0.05); color:var(--accent-emerald); font-weight:700;">
           </div>
         </div>
       </div>
@@ -265,53 +282,74 @@
             <div class="icon icon-purple">🏆</div>종합 평가 점수
           </div>
         </div>
-        <div class="score-display" style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;background:rgba(15,23,42,0.4);border:1px solid var(--border-glass);padding:24px;border-radius:var(--radius-lg);margin-bottom:20px;">
+        <div class="score-display"
+          style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;background:rgba(15,23,42,0.4);border:1px solid var(--border-glass);padding:24px;border-radius:var(--radius-lg);margin-bottom:20px;">
           <!-- 3중 네온 다이얼 SVG 영역 -->
-          <div class="score-circle" style="position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <div class="score-circle"
+            style="position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <svg viewBox="0 0 120 120" style="width:100%;height:100%;transform:rotate(-90deg);">
               <!-- 1. Open Index (오픈 지수) - Outer Dial: Cyan -->
-              <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(6,182,212,0.06)" stroke-width="6"/>
-              <circle id="openIndexRing" cx="60" cy="60" r="48" fill="none" stroke="var(--accent-blue)" stroke-width="6" stroke-dasharray="301.6" stroke-dashoffset="301.6" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease-in-out;filter:drop-shadow(0 0 6px rgba(6,182,212,0.6));"/>
-              
+              <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(6,182,212,0.06)" stroke-width="6" />
+              <circle id="openIndexRing" cx="60" cy="60" r="48" fill="none" stroke="var(--accent-blue)" stroke-width="6"
+                stroke-dasharray="301.6" stroke-dashoffset="301.6" stroke-linecap="round"
+                style="transition:stroke-dashoffset 1s ease-in-out;filter:drop-shadow(0 0 6px rgba(6,182,212,0.6));" />
+
               <!--  middle. TPI (종합 지수) - Middle Dial: Violet -->
-              <circle cx="60" cy="60" r="38" fill="none" stroke="rgba(139,92,246,0.06)" stroke-width="7"/>
-              <circle id="scoreRing" cx="60" cy="60" r="38" fill="none" stroke="var(--accent-purple)" stroke-width="7" stroke-dasharray="238.76" stroke-dashoffset="238.76" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease-in-out;filter:drop-shadow(0 0 8px rgba(139,92,246,0.8));"/>
-              
+              <circle cx="60" cy="60" r="38" fill="none" stroke="rgba(139,92,246,0.06)" stroke-width="7" />
+              <circle id="scoreRing" cx="60" cy="60" r="38" fill="none" stroke="var(--accent-purple)" stroke-width="7"
+                stroke-dasharray="238.76" stroke-dashoffset="238.76" stroke-linecap="round"
+                style="transition:stroke-dashoffset 1s ease-in-out;filter:drop-shadow(0 0 8px rgba(139,92,246,0.8));" />
+
               <!-- 3. Conversion Index (전환 지수) - Inner Dial: Emerald -->
-              <circle cx="60" cy="60" r="28" fill="none" stroke="rgba(16,185,129,0.06)" stroke-width="6"/>
-              <circle id="convertIndexRing" cx="60" cy="60" r="28" fill="none" stroke="var(--accent-emerald)" stroke-width="6" stroke-dasharray="175.93" stroke-dashoffset="175.93" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease-in-out;filter:drop-shadow(0 0 6px rgba(16,185,129,0.6));"/>
+              <circle cx="60" cy="60" r="28" fill="none" stroke="rgba(16,185,129,0.06)" stroke-width="6" />
+              <circle id="convertIndexRing" cx="60" cy="60" r="28" fill="none" stroke="var(--accent-emerald)"
+                stroke-width="6" stroke-dasharray="175.93" stroke-dashoffset="175.93" stroke-linecap="round"
+                style="transition:stroke-dashoffset 1s ease-in-out;filter:drop-shadow(0 0 6px rgba(16,185,129,0.6));" />
             </svg>
             <!-- 중앙의 종합 점수 텍스트 -->
-            <div style="position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
-              <div class="score-number" id="scoreNum" style="font-size:32px;font-weight:900;color:var(--text-primary);text-shadow:0 0 10px rgba(255,255,255,0.1);line-height:1;">—</div>
-              <div class="score-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-top:2px;">TPI INDEX</div>
+            <div
+              style="position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+              <div class="score-number" id="scoreNum"
+                style="font-size:32px;font-weight:900;color:var(--text-primary);text-shadow:0 0 10px rgba(255,255,255,0.1);line-height:1;">
+                —</div>
+              <div class="score-label"
+                style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-top:2px;">
+                TPI INDEX</div>
             </div>
           </div>
-          
+
           <!-- 우측 인덱스 상세 현황 -->
           <div class="score-details" style="flex:1;min-width:200px;">
-            <h3 id="scoreGrade" style="font-size:20px;font-weight:800;color:var(--text-primary);margin-bottom:8px;">캠페인을 선택해 주세요</h3>
-            <p id="scoreComment" style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">위 선택박스에서 캠페인을 선택하세요.</p>
-            
+            <h3 id="scoreGrade" style="font-size:20px;font-weight:800;color:var(--text-primary);margin-bottom:8px;">캠페인을
+              선택해 주세요</h3>
+            <p id="scoreComment" style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">
+              위 선택박스에서 캠페인을 선택하세요.</p>
+
             <!-- 3대 지표 서브 라벨 카드 -->
             <div style="display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
+              <div
+                style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
                 <span style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
-                  <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-purple);box-shadow:0 0 4px var(--accent-purple);"></span>
+                  <span
+                    style="width:8px;height:8px;border-radius:50%;background:var(--accent-purple);box-shadow:0 0 4px var(--accent-purple);"></span>
                   🏆 TPI 종합 성과 지수
                 </span>
                 <span id="scoreNumTpi" style="font-size:13px;font-weight:800;color:var(--accent-purple);">—</span>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
+              <div
+                style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
                 <span style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
-                  <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-blue);box-shadow:0 0 4px var(--accent-blue);"></span>
+                  <span
+                    style="width:8px;height:8px;border-radius:50%;background:var(--accent-blue);box-shadow:0 0 4px var(--accent-blue);"></span>
                   📬 수신 ➡️ 탐독 여정 (오픈 지수)
                 </span>
                 <span id="scoreNumOpen" style="font-size:13px;font-weight:800;color:var(--accent-blue);">—</span>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
+              <div
+                style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
                 <span style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
-                  <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);box-shadow:0 0 4px var(--accent-emerald);"></span>
+                  <span
+                    style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);box-shadow:0 0 4px var(--accent-emerald);"></span>
                   🎯 클릭 전환 여정 (전환 지수)
                 </span>
                 <span id="scoreNumConvert" style="font-size:13px;font-weight:800;color:var(--accent-emerald);">—</span>
@@ -354,9 +392,12 @@
             <div class="section-title">
               <div class="icon icon-purple">✉️</div>메시지 본문
             </div>
-            <button class="detail-btn ai" style="padding:5px 12px;font-size:11px;" onclick="openModal('msgBody')">📋 전체 보기</button>
+            <button class="detail-btn ai" style="padding:5px 12px;font-size:11px;" onclick="openModal('msgBody')">📋 전체
+              보기</button>
           </div>
-          <div id="resultMsgBody" style="font-size:13px;color:var(--text-secondary);line-height:1.8;padding:16px;background:rgba(15,23,42,0.4);border-radius:var(--radius-md);border:1px solid var(--border-glass);white-space:pre-wrap;max-height:200px;overflow-y:auto;"></div>
+          <div id="resultMsgBody"
+            style="font-size:13px;color:var(--text-secondary);line-height:1.8;padding:16px;background:rgba(15,23,42,0.4);border-radius:var(--radius-md);border:1px solid var(--border-glass);white-space:pre-wrap;max-height:200px;overflow-y:auto;">
+          </div>
         </div>
 
         <!-- CTA 링크 카드 -->
@@ -384,19 +425,28 @@
             <div class="section-title">
               <div class="icon icon-cyan">📊</div>과거 캠페인 1:1 다차원 피처 대조 시뮬레이터
             </div>
-            <span class="section-badge" style="background:rgba(6,182,212,0.1);color:var(--accent-blue);border:1px solid rgba(6,182,212,0.2);">Feature Contrast Matrix</span>
+            <span class="section-badge"
+              style="background:rgba(6,182,212,0.1);color:var(--accent-blue);border:1px solid rgba(6,182,212,0.2);">Feature
+              Contrast Matrix</span>
           </div>
           <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">
-            선택한 이번 캠페인의 발송 환경과 메시지 피처를 과거의 <strong>최고 성과(A)</strong> 및 <strong>가장 조건이 유사한 캠페인(B)</strong>과 1:1 병렬 대조하여 성과 편차를 시각화합니다.
+            선택한 이번 캠페인의 발송 환경과 메시지 피처를 과거의 <strong>최고 성과(A)</strong> 및 <strong>가장 조건이 유사한 캠페인(B)</strong>과 1:1 병렬 대조하여
+            성과 편차를 시각화합니다.
           </p>
           <div style="overflow-x:auto;">
             <table class="result-table" style="text-align:center;">
               <thead>
                 <tr>
                   <th style="text-align:left;min-width:140px;">대조 차원 (Features)</th>
-                  <th style="background:rgba(139,92,246,0.08);border-bottom:2px solid rgba(139,92,246,0.3);min-width:130px;">이번 캠페인 (Current)</th>
-                  <th style="background:rgba(236,72,153,0.06);border-bottom:2px solid rgba(236,72,153,0.2);min-width:130px;">[대조군 A] 과거 최고 성과</th>
-                  <th style="background:rgba(59,130,246,0.06);border-bottom:2px solid rgba(59,130,246,0.2);min-width:130px;">[대조군 B] 조건 가장 유사</th>
+                  <th
+                    style="background:rgba(139,92,246,0.08);border-bottom:2px solid rgba(139,92,246,0.3);min-width:130px;">
+                    이번 캠페인 (Current)</th>
+                  <th
+                    style="background:rgba(236,72,153,0.06);border-bottom:2px solid rgba(236,72,153,0.2);min-width:130px;">
+                    [대조군 A] 과거 최고 성과</th>
+                  <th
+                    style="background:rgba(59,130,246,0.06);border-bottom:2px solid rgba(59,130,246,0.2);min-width:130px;">
+                    [대조군 B] 조건 가장 유사</th>
                 </tr>
               </thead>
               <tbody id="featureComparisonBody">
@@ -412,49 +462,72 @@
             <div class="section-title">
               <div class="icon icon-purple">🎯</div>CRM 성과 2D 포지셔닝 매트릭스
             </div>
-            <span class="section-badge" style="background:rgba(139,92,246,0.1);color:var(--accent-purple);border:1px solid rgba(139,92,246,0.2);">Positioning Matrix</span>
+            <span class="section-badge"
+              style="background:rgba(139,92,246,0.1);color:var(--accent-purple);border:1px solid rgba(139,92,246,0.2);">Positioning
+              Matrix</span>
           </div>
           <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.5;">
             오픈 지수(수신➡️탐독 여정, X축)와 전환 지수(클릭 전환 여정, Y축)를 기준으로 모든 캠페인의 위치를 분면 매트릭스에 맵핑합니다. 이번 캠페인은 큰 별형 앵커로 강조 표시됩니다.
           </p>
-          
+
           <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch;">
             <!-- 2D 분면 차트 보드 -->
-            <div style="flex:1;min-width:300px;max-width:400px;background:rgba(15,23,42,0.6);border:1px solid var(--border-glass);border-radius:12px;position:relative;aspect-ratio:1/1;padding:24px;box-sizing:border-box;overflow:hidden;box-shadow:inset 0 0 20px rgba(0,0,0,0.6);">
-              
+            <div
+              style="flex:1;min-width:300px;max-width:400px;background:rgba(15,23,42,0.6);border:1px solid var(--border-glass);border-radius:12px;position:relative;aspect-ratio:1/1;padding:24px;box-sizing:border-box;overflow:hidden;box-shadow:inset 0 0 20px rgba(0,0,0,0.6);">
+
               <!-- 4대 사분면 가이드 배경 라벨 -->
-              <div style="position:absolute;top:20px;left:20px;font-size:10px;font-weight:800;color:rgba(16,185,129,0.3);text-shadow:0 0 4px rgba(16,185,129,0.1);">🎯 클로저 (Closer)</div>
-              <div style="position:absolute;top:20px;right:20px;font-size:10px;font-weight:800;color:rgba(139,92,246,0.5);text-shadow:0 0 6px rgba(139,92,246,0.2);">🌟 스타 (CRM Star)</div>
-              <div style="position:absolute;bottom:20px;left:20px;font-size:10px;font-weight:800;color:rgba(239,68,68,0.3);text-shadow:0 0 4px rgba(239,68,68,0.1);">⚠️ 리빌딩 대상 (Rebuild)</div>
-              <div style="position:absolute;bottom:20px;right:20px;font-size:10px;font-weight:800;color:rgba(6,182,212,0.3);text-shadow:0 0 4px rgba(6,182,212,0.1);">📬 트래픽 캐쳐 (Traffic)</div>
-              
+              <div
+                style="position:absolute;top:20px;left:20px;font-size:10px;font-weight:800;color:rgba(16,185,129,0.3);text-shadow:0 0 4px rgba(16,185,129,0.1);">
+                🎯 클로저 (Closer)</div>
+              <div
+                style="position:absolute;top:20px;right:20px;font-size:10px;font-weight:800;color:rgba(139,92,246,0.5);text-shadow:0 0 6px rgba(139,92,246,0.2);">
+                🌟 스타 (CRM Star)</div>
+              <div
+                style="position:absolute;bottom:20px;left:20px;font-size:10px;font-weight:800;color:rgba(239,68,68,0.3);text-shadow:0 0 4px rgba(239,68,68,0.1);">
+                ⚠️ 리빌딩 대상 (Rebuild)</div>
+              <div
+                style="position:absolute;bottom:20px;right:20px;font-size:10px;font-weight:800;color:rgba(6,182,212,0.3);text-shadow:0 0 4px rgba(6,182,212,0.1);">
+                📬 트래픽 캐쳐 (Traffic)</div>
+
               <!-- 사분면 중심 십자 가이드선 (절반 위치) -->
-              <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.06);border-left:1px dashed rgba(255,255,255,0.15);"></div>
-              <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,0.06);border-top:1px dashed rgba(255,255,255,0.15);"></div>
-              
+              <div
+                style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.06);border-left:1px dashed rgba(255,255,255,0.15);">
+              </div>
+              <div
+                style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,0.06);border-top:1px dashed rgba(255,255,255,0.15);">
+              </div>
+
               <!-- 축 라벨 -->
-              <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;font-weight:600;">오픈 지수 (수신 ➡️ 탐독) ➡️</div>
-              <div style="position:absolute;left:4px;top:50%;transform:translateY(-50%) rotate(-90deg);transform-origin:left center;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;font-weight:600;white-space:nowrap;">전환 지수 (클릭 전환) ➡️</div>
-              
+              <div
+                style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;font-weight:600;">
+                오픈 지수 (수신 ➡️ 탐독) ➡️</div>
+              <div
+                style="position:absolute;left:4px;top:50%;transform:translateY(-50%) rotate(-90deg);transform-origin:left center;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;font-weight:600;white-space:nowrap;">
+                전환 지수 (클릭 전환) ➡️</div>
+
               <!-- 플로팅 도트 컨테이너 -->
-              <div id="matrixDotsContainer" style="position:absolute;top:24px;left:24px;right:24px;bottom:24px;width:calc(100% - 48px);height:calc(100% - 48px);">
+              <div id="matrixDotsContainer"
+                style="position:absolute;top:24px;left:24px;right:24px;bottom:24px;width:calc(100% - 48px);height:calc(100% - 48px);">
                 <!-- 도트들이 dynamic하게 주입됩니다 -->
               </div>
             </div>
-            
+
             <!-- 포지셔닝 설명 및 범례 -->
             <div style="flex:1.2;min-width:260px;display:flex;flex-direction:column;justify-content:center;gap:12px;">
               <h4 style="font-size:14px;color:var(--text-primary);margin-bottom:4px;">분면 분석 인사이트</h4>
-              <div id="quadrantInsightCard" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:14px;border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+              <div id="quadrantInsightCard"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:14px;border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
                 캠페인을 선택하면 포지션 분석 결과와 맞춤 CRM 전략이 자동으로 추천됩니다.
               </div>
               <div style="display:flex;flex-direction:column;gap:8px;font-size:11px;color:var(--text-muted);">
                 <div style="display:flex;align-items:center;gap:8px;">
-                  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.5);"></span>
+                  <span
+                    style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.5);"></span>
                   과거 누적된 발송 캠페인 이력
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                  <span class="pulse-star" style="display:inline-block;width:14px;height:14px;background:var(--accent-purple);border-radius:50%;box-shadow:0 0 10px var(--accent-purple);animation:matrixStarPulse 1.5s infinite alternate;"></span>
+                  <span class="pulse-star"
+                    style="display:inline-block;width:14px;height:14px;background:var(--accent-purple);border-radius:50%;box-shadow:0 0 10px var(--accent-purple);animation:matrixStarPulse 1.5s infinite alternate;"></span>
                   현재 로드된 평가 대상 캠페인 (Current)
                 </div>
               </div>
@@ -468,7 +541,9 @@
             <div class="section-title">
               <div class="icon icon-emerald">✅</div>캠페인 런칭 필수 가동 체크리스트
             </div>
-            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);border:1px solid rgba(16,185,129,0.2);">Launch Checklist</span>
+            <span class="section-badge"
+              style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);border:1px solid rgba(16,185,129,0.2);">Launch
+              Checklist</span>
           </div>
           <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">
             AI 평가 결과 <strong>6점 이하의 취약점 항목</strong>에 대해 생성된 구체적인 개선 권장사항 액션 플랜입니다. 발송 전 확인하여 체크박스를 채워 보세요!
@@ -600,7 +675,7 @@
               <tr>
                 <th>캠페인명</th>
                 <th>발송일</th>
-                <th>채널</th>
+                <th>발송 유형</th>
                 <th>오픈율</th>
                 <th>전환율</th>
                 <th>AI 점수</th>
@@ -628,13 +703,15 @@
 
       <!-- 입력 영역 -->
       <div class="section">
-        <div class="section-header" style="position:relative; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div class="section-header"
+          style="position:relative; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
           <div class="section-title" style="margin:0;">
             <div class="icon icon-emerald">📝</div>메시지 정보 입력
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);">초록우산 전용</span>
-            
+            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);">초록우산
+              전용</span>
+
             <!-- 적용된 AI 프롬프트 툴팁 -->
             <div class="prompt-tooltip-container">
               <div class="prompt-tooltip-trigger">
@@ -730,7 +807,8 @@
             <div class="section-title">
               <div class="icon icon-emerald">🤖</div>AI 생성 결과
             </div>
-            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);" id="genResultBadge">Powered by Gemini</span>
+            <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);"
+              id="genResultBadge">Powered by Gemini</span>
           </div>
 
           <!-- 로딩 -->
@@ -757,10 +835,12 @@
           <div class="section-title">
             <div class="icon icon-purple">🖼️</div>이미지 구성
           </div>
-          <span class="section-badge" style="background:rgba(139,92,246,0.1);color:var(--accent-purple);">800×400 규격</span>
+          <span class="section-badge" style="background:rgba(139,92,246,0.1);color:var(--accent-purple);">800×400
+            규격</span>
         </div>
 
-        <div style="padding:10px 14px;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.12);border-radius:var(--radius-md);margin-bottom:16px;">
+        <div
+          style="padding:10px 14px;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.12);border-radius:var(--radius-md);margin-bottom:16px;">
           <p style="font-size:12px;color:var(--text-secondary);line-height:1.7;margin-bottom:8px;">
             📐 알림톡에 사용될 <strong style="color:var(--text-primary);">800×400px</strong> 규격 이미지를 생성합니다.<br>
             문구와 이미지를 입력하면 규격에 맞게 자동으로 배치됩니다.
@@ -770,8 +850,7 @@
         <!-- 문구 입력 -->
         <div class="form-group">
           <label class="form-label">📝 이미지 내 문구 <span style="color:var(--accent-rose)">*</span></label>
-          <textarea class="form-input" id="imgGenText" placeholder="예: 후원자님&#10;감사합니다" maxlength="60"
-            rows="3"
+          <textarea class="form-input" id="imgGenText" placeholder="예: 후원자님&#10;감사합니다" maxlength="60" rows="3"
             style="font-size:16px;font-weight:700;letter-spacing:0;resize:none;min-height:auto;line-height:1.6;"></textarea>
           <div style="display:flex;justify-content:space-between;margin-top:6px;">
             <p style="font-size:11px;color:var(--text-muted);">💡 최대 3줄, 최대 20자 (Enter로 줄 바꿈)</p>
@@ -783,8 +862,10 @@
         <!-- 이미지 업로드 -->
         <div class="form-group">
           <label class="form-label">🖼️ 배치할 이미지 (선택)</label>
-          <div class="alimtok-upload-area" id="imgGenUploadArea" onclick="document.getElementById('imgGenFileInput').click();">
-            <input type="file" id="imgGenFileInput" accept="image/*" onchange="handleImgGenUpload(event)" style="display:none;">
+          <div class="alimtok-upload-area" id="imgGenUploadArea"
+            onclick="document.getElementById('imgGenFileInput').click();">
+            <input type="file" id="imgGenFileInput" accept="image/*" onchange="handleImgGenUpload(event)"
+              style="display:none;">
             <div id="imgGenUploadPlaceholder">
               <div class="ai-upload-icon">📷</div>
               <div class="ai-upload-text">클릭하거나 이미지를 드래그하세요</div>
@@ -792,7 +873,8 @@
             </div>
             <div id="imgGenPreviewContainer" style="display:none;">
               <img id="imgGenPreviewImg" class="ai-preview-img" alt="미리보기">
-              <button type="button" class="ai-remove-img" onclick="event.stopPropagation();removeImgGenImage();">✕</button>
+              <button type="button" class="ai-remove-img"
+                onclick="event.stopPropagation();removeImgGenImage();">✕</button>
             </div>
           </div>
         </div>
@@ -800,8 +882,10 @@
         <!-- 미리보기 캔버스 -->
         <div class="form-group">
           <label class="form-label">👁️ 미리보기</label>
-          <div id="imgGenCanvasWrap" style="background:rgba(15,23,42,0.5);border:1px solid var(--border-glass);border-radius:var(--radius-md);padding:16px;text-align:center;">
-            <canvas id="imgGenCanvas" width="800" height="400" style="max-width:100%;height:auto;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></canvas>
+          <div id="imgGenCanvasWrap"
+            style="background:rgba(15,23,42,0.5);border:1px solid var(--border-glass);border-radius:var(--radius-md);padding:16px;text-align:center;">
+            <canvas id="imgGenCanvas" width="800" height="400"
+              style="max-width:100%;height:auto;border-radius:8px;border:1px solid rgba(255,255,255,0.08);"></canvas>
           </div>
         </div>
 
@@ -810,7 +894,8 @@
           <button class="btn btn-img-generate" id="imgGenBtn" onclick="generateAlimtokImage()">
             🖼️ 이미지 생성하기
           </button>
-          <button class="btn btn-img-download" id="imgDownloadBtn" onclick="downloadAlimtokImage()" style="display:none;">
+          <button class="btn btn-img-download" id="imgDownloadBtn" onclick="downloadAlimtokImage()"
+            style="display:none;">
             📥 PNG 다운로드
           </button>
         </div>
