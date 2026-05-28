@@ -182,7 +182,6 @@ function initAll() {
   initTabs();
   initFeedbackStars();
   initDragDrop();
-  initApiKeyField();
   initFirestore(); // Start real-time sync with Firestore
   updateBadge();
   initGenServiceType();
@@ -828,34 +827,7 @@ function showToast(msg) { const t = document.getElementById('toast'); document.g
 const API_KEY_STORAGE = 'gemini_api_key_v4';
 
 function getApiKey() {
-  const inputEl = document.getElementById('localApiKey');
-  const key = inputEl ? inputEl.value.trim() : '';
-  if (key) { localStorage.setItem(API_KEY_STORAGE, key); return key; }
   return localStorage.getItem(API_KEY_STORAGE) || '';
-}
-
-function initApiKeyField() {
-  const saved = localStorage.getItem(API_KEY_STORAGE) || '';
-  const inputEl = document.getElementById('localApiKey');
-  const statusEl = document.getElementById('apiKeyStatus');
-  if (inputEl && saved) {
-    inputEl.value = saved;
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent-emerald);">✅ 저장된 키 로드됨</span>';
-  }
-  if (inputEl) {
-    inputEl.addEventListener('change', () => {
-      const v = inputEl.value.trim();
-      if (v) { localStorage.setItem(API_KEY_STORAGE, v); if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent-emerald);">✅ 키 저장됨</span>'; }
-      else { localStorage.removeItem(API_KEY_STORAGE); if (statusEl) statusEl.innerHTML = ''; }
-    });
-  }
-}
-
-function toggleLocalKeyVisibility() {
-  const inp = document.getElementById('localApiKey');
-  const btn = document.getElementById('toggleKeyBtn');
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈 숨기기'; }
-  else { inp.type = 'password'; btn.textContent = '👁 보기'; }
 }
 
 async function fetchGemini(model, contents, generationConfig = {}) {
@@ -868,8 +840,14 @@ async function fetchGemini(model, contents, generationConfig = {}) {
     headers = { 'Content-Type': 'application/json' };
     body = JSON.stringify({ contents, generationConfig });
   } else {
-    // 2. 로컬 API 키가 비어있는 경우: Netlify serverless 프록시 호출
-    url = `/api/gemini-proxy`;
+    // 2. 로컬 API 키가 비어있는 경우: Vercel serverless 프록시 호출 (CORS 지원)
+    const isVercelHost = window.location.hostname.includes('vercel.app');
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    url = (isVercelHost || isLocalhost)
+      ? '/api/gemini-proxy'
+      : 'https://messageevalfin.vercel.app/api/gemini-proxy';
+      
     headers = { 'Content-Type': 'application/json' };
     body = JSON.stringify({ model, contents, generationConfig });
   }
@@ -882,10 +860,7 @@ async function fetchGemini(model, contents, generationConfig = {}) {
     });
     return res;
   } catch (netErr) {
-    if (window.location.protocol === 'file:') {
-      throw new Error('로컬 파일(file://)로 대시보드를 직접 열어 실행 중일 때는 백엔드 프록시를 사용할 수 없습니다. 대시보드 화면에서 API 키를 직접 입력해 주세요.');
-    }
-    throw new Error(`네트워크 연결 오류: ${netErr.message}. API 키가 입력되지 않았거나, 서버와 통신할 수 없는 상태일 수 있습니다.`);
+    throw new Error(`네트워크 연결 오류: ${netErr.message}. Vercel 서버와 통신할 수 없는 상태이거나 API 호출이 거부되었습니다.`);
   }
 }
 

@@ -114,30 +114,6 @@
           <span class="section-badge">AI 분석 대상</span>
         </div>
 
-        <div class="form-group" id="apiKeySection">
-          <div id="apiKeyMsg"
-            style="padding:12px 16px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:var(--radius-md);margin-bottom:8px;">
-            <span style="font-size:13px;color:var(--accent-purple);font-weight:600;">🔑 Gemini API 키 설정 (선택 사항)</span>
-            <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:8px;">
-              Netlify 환경변수(<code>GEMINI_API_KEY</code>)가 설정된 경우 입력하지 않아도 서버 프록시를 통해 자동 실행됩니다. 
-              개인 API 키를 사용하거나 로컬 독립 테스트 시에만 입력해 주세요.
-            </p>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input class="form-input" id="localApiKey" type="password" placeholder="개인 Gemini API Key 입력 시 직접 연결 (선택)"
-                style="flex:1;font-size:13px;">
-              <button type="button" onclick="toggleLocalKeyVisibility()" class="btn btn-secondary"
-                style="padding:6px 12px;font-size:12px;white-space:nowrap;" id="toggleKeyBtn">👁 보기</button>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-              <p style="font-size:11px;color:var(--text-muted);margin:0;">
-                💡 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-blue);">Google
-                  AI Studio</a>에서 무료 API 키를 발급받을 수 있습니다.
-              </p>
-              <span id="apiKeyStatus" style="font-size:11px;color:var(--text-muted);"></span>
-            </div>
-          </div>
-        </div>
-
 
         <div class="form-group"><label class="form-label">메시지 본문 <span style="color:var(--accent-rose)">*</span></label>
           <textarea class="form-textarea" id="aiMsgBody" style="min-height:150px;"
@@ -649,22 +625,6 @@
         <p>서비스 종류와 내용을 입력하면 AI가 3가지 유형의 메시지 문안을 자동으로 생성합니다.</p>
       </div>
 
-      <!-- API 키 안내 -->
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title">
-            <div class="icon icon-emerald">🔑</div>API 키 설정
-          </div>
-        </div>
-        <div id="genApiKeyMsg"
-          style="padding:12px 16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-md);">
-          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">캠페인 정보 탭에서 입력한 Gemini API 키가
-            자동으로 사용됩니다.</p>
-          <p style="font-size:11px;color:var(--text-muted);">💡 키가 없다면 <a
-              href="https://aistudio.google.com/apikey" target="_blank"
-              style="color:var(--accent-emerald);">Google AI Studio</a>에서 무료 발급받으세요.</p>
-        </div>
-      </div>
 
       <!-- 입력 영역 -->
       <div class="section">
