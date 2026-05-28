@@ -2238,7 +2238,7 @@ function initImgGen() {
 Object.assign(window, {
   switchTab, saveAndShowResult, runAiAndSave, loadCampaignResult,
   deleteCampaign, openModal, closeModal, exportReport, startNewEval,
-  toggleFeedback, toggleLocalKeyVisibility, handleAiImageUpload,
+  toggleFeedback, handleAiImageUpload,
   removeAiImage, addCtaLink, removeCtaLink, runAiEvaluation,
   generateMessage, copyGeneratedMessage, copyLastPrompt,
   handleImgGenUpload, removeImgGenImage,
