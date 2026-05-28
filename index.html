@@ -117,11 +117,13 @@
         <div class="form-group" id="apiKeySection">
           <div id="apiKeyMsg"
             style="padding:12px 16px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:var(--radius-md);margin-bottom:8px;">
-            <span style="font-size:13px;color:var(--accent-purple);font-weight:600;">🔑 Gemini API 키</span>
-            <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:8px;">API 키는
-              브라우저(localStorage)에만 저장되며, 소스코드에 포함되지 않아 안전합니다.</p>
+            <span style="font-size:13px;color:var(--accent-purple);font-weight:600;">🔑 Gemini API 키 설정 (선택 사항)</span>
+            <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:8px;">
+              Netlify 환경변수(<code>GEMINI_API_KEY</code>)가 설정된 경우 입력하지 않아도 서버 프록시를 통해 자동 실행됩니다. 
+              개인 API 키를 사용하거나 로컬 독립 테스트 시에만 입력해 주세요.
+            </p>
             <div style="display:flex;gap:8px;align-items:center;">
-              <input class="form-input" id="localApiKey" type="password" placeholder="Gemini API Key 입력 (AIza...)"
+              <input class="form-input" id="localApiKey" type="password" placeholder="개인 Gemini API Key 입력 시 직접 연결 (선택)"
                 style="flex:1;font-size:13px;">
               <button type="button" onclick="toggleLocalKeyVisibility()" class="btn btn-secondary"
                 style="padding:6px 12px;font-size:12px;white-space:nowrap;" id="toggleKeyBtn">👁 보기</button>

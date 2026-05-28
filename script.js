@@ -858,6 +858,37 @@ function toggleLocalKeyVisibility() {
   else { inp.type = 'password'; btn.textContent = '👁 보기'; }
 }
 
+async function fetchGemini(model, contents, generationConfig = {}) {
+  const apiKey = getApiKey();
+  let url, body, headers;
+
+  if (apiKey) {
+    // 1. 로컬 API 키가 존재하는 경우: Google API로 직접 호출 (클라이언트 측)
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    headers = { 'Content-Type': 'application/json' };
+    body = JSON.stringify({ contents, generationConfig });
+  } else {
+    // 2. 로컬 API 키가 비어있는 경우: Netlify serverless 프록시 호출
+    url = `/api/gemini-proxy`;
+    headers = { 'Content-Type': 'application/json' };
+    body = JSON.stringify({ model, contents, generationConfig });
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body
+    });
+    return res;
+  } catch (netErr) {
+    if (window.location.protocol === 'file:') {
+      throw new Error('로컬 파일(file://)로 대시보드를 직접 열어 실행 중일 때는 백엔드 프록시를 사용할 수 없습니다. 대시보드 화면에서 API 키를 직접 입력해 주세요.');
+    }
+    throw new Error(`네트워크 연결 오류: ${netErr.message}. API 키가 입력되지 않았거나, 서버와 통신할 수 없는 상태일 수 있습니다.`);
+  }
+}
+
 function handleAiImageUpload(event) { const file = event.target.files[0]; if (!file) return; if (file.size > 10 * 1024 * 1024) { showToast('⚠️ 10MB 이하만'); return; } aiImageMimeType = file.type; const reader = new FileReader(); reader.onload = e => { aiImageBase64 = e.target.result.split(',')[1]; document.getElementById('aiPreviewImg').src = e.target.result; document.getElementById('aiUploadPlaceholder').style.display = 'none'; document.getElementById('aiPreviewContainer').style.display = 'block'; document.getElementById('aiUploadArea').classList.add('has-image'); }; reader.readAsDataURL(file); }
 function removeAiImage() { aiImageBase64 = null; aiImageMimeType = null; document.getElementById('aiFileInput').value = ''; document.getElementById('aiUploadPlaceholder').style.display = 'block'; document.getElementById('aiPreviewContainer').style.display = 'none'; document.getElementById('aiUploadArea').classList.remove('has-image'); }
 function initDragDrop() { const area = document.getElementById('aiUploadArea'); if (!area) return; area.addEventListener('dragover', e => { e.preventDefault(); area.style.borderColor = '#8b5cf6'; }); area.addEventListener('dragleave', () => { area.style.borderColor = ''; }); area.addEventListener('drop', e => { e.preventDefault(); area.style.borderColor = ''; const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) { const dt = new DataTransfer(); dt.items.add(f); document.getElementById('aiFileInput').files = dt.files; handleAiImageUpload({ target: { files: [f] } }); } }); }
@@ -1241,8 +1272,6 @@ ${openRate || convertRate ? `
 async function runAiEvaluation() {
   const msgBody = document.getElementById('aiMsgBody').value.trim();
   if (!msgBody) { showToast('⚠️ 메시지 본문 필요'); return; }
-  const apiKey = getApiKey();
-  if (!apiKey) { showToast('⚠️ Gemini API 키를 입력해 주세요.'); document.getElementById('localApiKey').focus(); return; }
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
   document.getElementById('aiResultSection').style.display = 'block'; document.getElementById('aiLoading').style.display = 'flex';
   document.getElementById('aiResultCard').style.display = 'none'; document.getElementById('aiScoreSummary').style.display = 'none';
@@ -1254,12 +1283,7 @@ async function runAiEvaluation() {
     for (const model of models) {
       try {
         document.querySelector('.ai-loading-text').textContent = `${model} 모델로 분석 중...`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
-        });
+        const res = await fetchGemini(model, [{ parts }], { temperature: 0.7, maxOutputTokens: 8192 });
         if (res.ok) { 
           const data = await res.json(); 
           text = data.candidates?.[0]?.content?.parts?.[0]?.text; 
@@ -1267,15 +1291,28 @@ async function runAiEvaluation() {
         } else {
           const errData = await res.json().catch(() => ({}));
           console.warn(`${model} failed:`, errData.error || res.status);
-          const errMsg = errData.error?.message || `API 오류 (${res.status})`;
+          const errMsg = errData.error?.message || errData.error || `API 오류 (${res.status})`;
           if (res.status === 401 || res.status === 403) { 
             throw new Error('API 키가 유효하지 않습니다. 올바른 Gemini API 키를 입력해 주세요.'); 
+          }
+          if (res.status === 404) {
+            throw new Error('서버 프록시 경로(/api/gemini-proxy)를 찾을 수 없습니다. 로컬 단독 테스트 시에는 API 키를 직접 입력해 주세요.');
+          }
+          if (res.status === 500 && errMsg.includes('GEMINI_API_KEY')) {
+            throw new Error('서버에 GEMINI_API_KEY 환경변수가 설정되지 않았습니다. API 키를 직접 입력해 주세요.');
           }
           throw new Error(errMsg);
         }
       } catch (modelErr) {
         lastError = modelErr;
-        if (modelErr.message && (modelErr.message.includes('API 키') || modelErr.message.includes('401') || modelErr.message.includes('403'))) {
+        if (modelErr.message && (
+          modelErr.message.includes('API 키') || 
+          modelErr.message.includes('401') || 
+          modelErr.message.includes('403') ||
+          modelErr.message.includes('환경변수') ||
+          modelErr.message.includes('로컬 파일') ||
+          modelErr.message.includes('프록시 경로')
+        )) {
           throw modelErr;
         }
         console.warn(`${model} 실패, 다음 모델 시도... 요인:`, modelErr.message);
@@ -1664,12 +1701,6 @@ async function generateMessage() {
   if (!serviceType) { showToast('⚠️ 서비스 종류를 선택해 주세요.'); return; }
   if (!content) { showToast('⚠️ 보내고자 하는 내용을 입력해 주세요.'); return; }
 
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    showToast('⚠️ 캠페인 정보 탭에서 Gemini API 키를 먼저 입력해 주세요.');
-    return;
-  }
-
   const btn = document.getElementById('genRunBtn');
   btn.disabled = true;
   btn.textContent = '⏳ AI가 문안을 생성 중...';
@@ -1691,19 +1722,15 @@ async function generateMessage() {
     for (const model of models) {
       try {
         document.querySelector('#genLoading .ai-loading-text').textContent = `${model} 모델로 생성 중...`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { 
-              temperature: 0.9, 
-              maxOutputTokens: 4096,
-              responseMimeType: "application/json"
-            }
-          })
-        });
+        const res = await fetchGemini(
+          model, 
+          [{ parts: [{ text: prompt }] }], 
+          { 
+            temperature: 0.9, 
+            maxOutputTokens: 4096,
+            responseMimeType: "application/json"
+          }
+        );
         if (res.ok) {
           const data = await res.json();
           text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -1711,15 +1738,28 @@ async function generateMessage() {
         } else {
           const errData = await res.json().catch(() => ({}));
           console.warn(`${model} failed:`, errData.error || res.status);
-          const errMsg = errData.error?.message || `API 오류 (${res.status})`;
+          const errMsg = errData.error?.message || errData.error || `API 오류 (${res.status})`;
           if (res.status === 401 || res.status === 403) {
-            throw new Error('API 키가 유효하지 않습니다.');
+            throw new Error('API 키가 유효하지 않습니다. 올바른 Gemini API 키를 입력해 주세요.');
+          }
+          if (res.status === 404) {
+            throw new Error('서버 프록시 경로(/api/gemini-proxy)를 찾을 수 없습니다. 로컬 단독 테스트 시에는 API 키를 직접 입력해 주세요.');
+          }
+          if (res.status === 500 && errMsg.includes('GEMINI_API_KEY')) {
+            throw new Error('서버에 GEMINI_API_KEY 환경변수가 설정되지 않았습니다. API 키를 직접 입력해 주세요.');
           }
           throw new Error(errMsg);
         }
       } catch (modelErr) {
         lastError = modelErr;
-        if (modelErr.message && (modelErr.message.includes('API 키') || modelErr.message.includes('401') || modelErr.message.includes('403'))) {
+        if (modelErr.message && (
+          modelErr.message.includes('API 키') || 
+          modelErr.message.includes('401') || 
+          modelErr.message.includes('403') ||
+          modelErr.message.includes('환경변수') ||
+          modelErr.message.includes('로컬 파일') ||
+          modelErr.message.includes('프록시 경로')
+        )) {
           throw modelErr;
         }
         console.warn(`${model} 실패, 다음 모델 시도... 요인:`, modelErr.message);
