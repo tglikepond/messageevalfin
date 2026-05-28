@@ -330,12 +330,78 @@ function runAiAndSave() {
 }
 
 // ===== Results =====
+function clearCampaignResult() {
+  selectedCampaignCache = null;
+  const scoreRing = document.getElementById('scoreRing');
+  const openRing = document.getElementById('openIndexRing');
+  const convertRing = document.getElementById('convertIndexRing');
+  if (scoreRing) scoreRing.style.strokeDashoffset = '238.76';
+  if (openRing) openRing.style.strokeDashoffset = '301.6';
+  if (convertRing) convertRing.style.strokeDashoffset = '175.93';
+  
+  document.getElementById('scoreNum').textContent = '—';
+  document.getElementById('scoreGrade').textContent = '캠페인을 선택해 주세요';
+  document.getElementById('scoreComment').textContent = '위 선택박스에서 캠페인을 선택하세요.';
+  
+  document.getElementById('scoreNumTpi').textContent = '—';
+  document.getElementById('scoreNumOpen').textContent = '—';
+  document.getElementById('scoreNumConvert').textContent = '—';
+  
+  document.getElementById('resultSummarySection').style.display = 'none';
+  
+  const msgBodySection = document.getElementById('resultMsgBodySection');
+  if (msgBodySection) msgBodySection.style.display = 'none';
+  const ctaSection = document.getElementById('resultCtaSection');
+  if (ctaSection) ctaSection.style.display = 'none';
+  const statsSection = document.getElementById('resultMsgStatsSection');
+  if (statsSection) statsSection.style.display = 'none';
+  
+  document.getElementById('resultBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">캠페인을 선택해 주세요.</td></tr>';
+}
+
 function refreshResultSelector() {
+  const dateFilter = document.getElementById('filterCampaignDate');
+  const typeFilter = document.getElementById('filterCampaignType');
   const sel = document.getElementById('resultCampaignSelect');
-  const campaigns = loadCampaigns(); const curVal = sel.value;
+  
+  if (!dateFilter || !typeFilter || !sel) return;
+  
+  const campaigns = loadCampaigns();
+  const selectedDate = dateFilter.value;
+  const selectedType = typeFilter.value;
+  const curVal = sel.value;
+  
+  // Extract unique send dates (ignoring empty dates) and sort descending
+  const uniqueDates = [...new Set(campaigns.map(c => c.sendDate).filter(d => d))].sort((a, b) => b.localeCompare(a));
+  
+  dateFilter.innerHTML = '<option value="">발송일 선택 (전체)</option>' +
+    uniqueDates.map(d => `<option value="${d}">${d}</option>`).join('');
+  
+  if (uniqueDates.includes(selectedDate)) {
+    dateFilter.value = selectedDate;
+  } else {
+    dateFilter.value = '';
+  }
+  
+  // Filter campaigns
+  let filteredCampaigns = campaigns;
+  if (dateFilter.value) {
+    filteredCampaigns = filteredCampaigns.filter(c => c.sendDate === dateFilter.value);
+  }
+  if (selectedType) {
+    filteredCampaigns = filteredCampaigns.filter(c => c.campaignType === selectedType);
+  }
+  
   sel.innerHTML = '<option value="">캠페인을 선택하세요</option>' +
-    campaigns.map(c => `<option value="${c.id}">${c.name} (${c.sendDate || c.createdAt})</option>`).join('');
-  if (curVal) sel.value = curVal;
+    filteredCampaigns.map(c => `<option value="${c.id}">${c.name} (${c.sendDate || c.createdAt})</option>`).join('');
+  
+  // If previously selected campaign is in the filtered list, keep it selected. Otherwise reset.
+  if (curVal && filteredCampaigns.some(c => c.id === parseInt(curVal))) {
+    sel.value = curVal;
+  } else {
+    sel.value = '';
+    clearCampaignResult();
+  }
 }
 
 function loadCampaignResult() {
@@ -785,13 +851,8 @@ async function deleteCampaign() {
   if (!id) { showToast('⚠️ 삭제할 캠페인 선택'); return; }
   if (!confirm('삭제하시겠습니까?')) return;
   await deleteCampaignFromFirestore(id);
-  selectedCampaignCache = null;
-  document.getElementById('scoreRing').style.strokeDashoffset = '283';
-  document.getElementById('scoreNum').textContent = '—';
-  document.getElementById('scoreGrade').textContent = '캠페인을 선택해 주세요';
-  document.getElementById('scoreComment').textContent = '';
-  document.getElementById('resultSummarySection').style.display = 'none';
-  document.getElementById('resultBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">캠페인을 선택해 주세요.</td></tr>';
+  clearCampaignResult();
+  refreshResultSelector();
   showToast('삭제되었습니다.');
 }
 
@@ -854,6 +915,11 @@ function resetAll() {
   ['fbRelVal', 'fbWillVal'].forEach(id => { document.getElementById(id).textContent = '5'; });
   ['fbCount', 'fbComment'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   removeAiImage(); document.getElementById('aiResultSection').style.display = 'none';
+  // Reset filters
+  const dateFilter = document.getElementById('filterCampaignDate');
+  const typeFilter = document.getElementById('filterCampaignType');
+  if (dateFilter) dateFilter.value = '';
+  if (typeFilter) typeFilter.value = '';
   // Reset CTA links to default 1 row
   document.getElementById('ctaLinksContainer').innerHTML = '';
   addCtaLink();

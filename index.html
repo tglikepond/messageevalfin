@@ -266,13 +266,20 @@
             <div class="icon icon-cyan">🔎</div>평가 캠페인 선택
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:2"><select class="form-select" id="resultCampaignSelect"
-              onchange="loadCampaignResult()">
+        <div class="form-row" style="align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div class="form-group" style="flex:1; min-width:140px; margin-bottom:0;"><select class="form-select" id="filterCampaignDate" onchange="refreshResultSelector()">
+              <option value="">발송일 선택 (전체)</option>
+            </select></div>
+          <div class="form-group" style="flex:1; min-width:140px; margin-bottom:0;"><select class="form-select" id="filterCampaignType" onchange="refreshResultSelector()">
+              <option value="">발송 유형 (전체)</option>
+              <option value="feedback">📋 피드백/결과보고</option>
+              <option value="benefit">🎁 혜택/참여활동</option>
+              <option value="other">💬 기타</option>
+            </select></div>
+          <div class="form-group" style="flex:2; min-width:200px; margin-bottom:0;"><select class="form-select" id="resultCampaignSelect" onchange="loadCampaignResult()">
               <option value="">캠페인을 선택하세요</option>
             </select></div>
-          <div class="form-group" style="flex:0"><button class="btn btn-secondary" onclick="deleteCampaign()"
-              style="white-space:nowrap;">🗑 삭제</button></div>
+          <div class="form-group" style="flex:0; margin-bottom:0;"><button class="btn btn-secondary" onclick="deleteCampaign()" style="white-space:nowrap; height:42px;">🗑 삭제</button></div>
         </div>
       </div>
 
