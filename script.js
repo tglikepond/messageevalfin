@@ -1741,13 +1741,13 @@ function buildAiPrompt() {
   - 캠페인명: "${best.name}" (실제 오픈율: ${best.openRate}%, 전환율: ${best.convertRate}%)
   - 발송 조건: ${best.sendDate ? getDayOfWeek(best.sendDate) : '미지정'} ${best.sendTime || ''} 발송
   - 메시지 피처: 글자 수 ${best.msgStats ? best.msgStats.charCount : 0}자 | 이모지 ${best.msgStats ? best.msgStats.emojiCount : 0}개 | CTA 버튼 ${best.ctaLinks ? best.ctaLinks.length : 0}개
-  - 메시지 본문 요약: ${(best.msgBody || '').slice(0, 100)}${(best.msgBody || '').length > 100 ? '...' : ''}
+  - 메시지 본문 요약: ${(best.msgBody || '').slice(0, 50)}${(best.msgBody || '').length > 50 ? '...' : ''}
 
 - **[대조군 B: 조건이 가장 유사한 캠페인]**
   - 캠페인명: "${similar.name}" (실제 오픈율: ${similar.openRate}%, 전환율: ${similar.convertRate}%)
   - 발송 조건: ${similar.sendDate ? getDayOfWeek(similar.sendDate) : '미지정'} ${similar.sendTime || ''} 발송
   - 메시지 피처: 글자 수 ${similar.msgStats ? similar.msgStats.charCount : 0}자 | 이모지 ${similar.msgStats ? similar.msgStats.emojiCount : 0}개 | CTA 버튼 ${similar.ctaLinks ? similar.ctaLinks.length : 0}개
-  - 메시지 본문 요약: ${(similar.msgBody || '').slice(0, 100)}${(similar.msgBody || '').length > 100 ? '...' : ''}
+  - 메시지 본문 요약: ${(similar.msgBody || '').slice(0, 50)}${(similar.msgBody || '').length > 50 ? '...' : ''}
 
 **과거 대조군과의 인과관계 비교 피드백 가이드:**
 1. **요일/시간 격차**: 이번 발송 요일(${currentWeekday || '미지정'}) 및 시간대(${sendTime || '미지정'})와 대조군의 발송 조건을 비교하여 오픈율 성과 차이에 미쳤을 행동심리학적 영향을 분석하세요.
@@ -1904,20 +1904,6 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 | 🧩 개인화 변수 | ${stats.personalizationCount}개 | (개인 맞춤 수준 분석) |
 | 🎯 CTA 버튼 수 | ${ctaLinks.length}개 | (주의 산만 유무 판정) |
 
-### 📋 10단계 고객 행동 여정 상세 리포트
-**아래 10가지 단계에 대해 핵심 위주로 각각 1~2문장의 분석을 간결하고 명확하게 제공하세요.**
-*반드시 메시지의 실제 문구를 직접 인용하고 구체적 개선 수치 편차를 핵심 위주로 명시하되, 불필요하게 서술을 늘리지 마세요.*
-
-1. **첫 줄 및 프리뷰 후킹력**: _점/10
-2. **비주얼 후킹 및 이모지 조화**: _점/10
-3. **개인화 정밀성 & 밀도**: _점/10
-4. **오프닝 맥락 간결성**: _점/10
-5. **요일/시간 타이밍 매칭**: _점/10
-6. **긴급성 및 즉각적 유도**: _점/10
-7. **인지 명확성 및 가독 구조**: _점/10
-8. **혜택 가치 사전 노출도**: _점/10
-9. **문장 완결성 및 카피라이팅 퀄리티**: _점/10
-10. **CTA 액션 문구 직관성**: _점/10
 
 ### 🔍 1:1 다차원 성과 인과관계 분석 (Causal Ablation Analysis)
 ${openRate || convertRate ? `
@@ -2232,7 +2218,7 @@ function renderAiReportContent(rawText) {
   // 4. Remove excessive blank lines
   cleanText = cleanText.replace(/\n{4,}/g, '\n\n\n');
 
-  // Pre-parse the 10-step Customer Journey Detailed Report
+  // Pre-parse the 10-step Customer Journey Detailed Report (for backward compatibility with old campaign formats)
   const steps = parseDetailedJourneyReport(cleanText);
   let journeyHtml = '';
   if (steps && steps.length >= 8) {
@@ -2246,7 +2232,7 @@ function renderAiReportContent(rawText) {
       cleanText = cleanText.slice(0, journeyHeaderIndex) + cleanText.slice(journeyHeaderIndex + journeyBlockLength);
     }
 
-    // Generate the styled card grid HTML
+    // Generate the styled card grid HTML from parsed steps
     journeyHtml += `<div style="margin-bottom:24px;padding:20px;background:rgba(139,92,246,0.03);border:1px solid rgba(139,92,246,0.12);border-radius:var(--radius-md);">`;
     journeyHtml += `<h3 style="margin:0 0 16px 0;font-size:16px;color:var(--accent-purple);display:flex;align-items:center;gap:8px;">📋 10단계 고객 행동 여정 상세 리포트</h3>`;
     journeyHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">`;
@@ -2272,6 +2258,36 @@ function renderAiReportContent(rawText) {
       journeyHtml += `  <div>`;
       journeyHtml += `    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:12px;">`;
       journeyHtml += `      <span style="font-size:14px;font-weight:700;color:var(--text-primary);line-height:1.4;">${step.num}. ${icon} ${step.title}</span>`;
+      journeyHtml += `      <span style="color:${color};font-weight:800;font-size:15px;white-space:nowrap;padding:2px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:6px;">${scoreVal}<span style="font-size:10px;color:var(--text-muted);font-weight:400;">/10</span></span>`;
+      journeyHtml += `    </div>`;
+      journeyHtml += `    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">평가 등급: <span style="color:${color};font-weight:700;">${grade}</span></div>`;
+      journeyHtml += `    <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin-top:6px;word-break:keep-all;">${formattedContent}</div>`;
+      journeyHtml += `  </div>`;
+      journeyHtml += `</div>`;
+    });
+    
+    journeyHtml += `</div></div>`;
+  } else {
+    // Generate the styled card grid HTML directly from JSON keys (for new optimized compact reports)
+    journeyHtml += `<div style="margin-bottom:24px;padding:20px;background:rgba(139,92,246,0.03);border:1px solid rgba(139,92,246,0.12);border-radius:var(--radius-md);">`;
+    journeyHtml += `<h3 style="margin:0 0 16px 0;font-size:16px;color:var(--accent-purple);display:flex;align-items:center;gap:8px;">📋 10단계 고객 행동 여정 상세 리포트</h3>`;
+    journeyHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">`;
+    
+    aiEvalItems.forEach((item, index) => {
+      const num = index + 1;
+      const icon = item.icon || '📍';
+      const scoreVal = aiScores[item.id] || 5;
+      const content = aiImprovements[item.id] || item.rec;
+      
+      const color = scoreVal >= 8 ? 'var(--accent-emerald)' : scoreVal >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';
+      const grade = scoreVal >= 8 ? '우수' : scoreVal >= 5 ? '보통' : '개선 필요';
+      
+      const formattedContent = formatDetailedCardContent(content);
+      
+      journeyHtml += `<div style="padding:14px 18px;background:rgba(15,23,42,0.45);border-radius:10px;border:1px solid var(--border-glass);display:flex;flex-direction:column;justify-content:space-between;">`;
+      journeyHtml += `  <div>`;
+      journeyHtml += `    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:12px;">`;
+      journeyHtml += `      <span style="font-size:14px;font-weight:700;color:var(--text-primary);line-height:1.4;">${num}. ${icon} ${item.title}</span>`;
       journeyHtml += `      <span style="color:${color};font-weight:800;font-size:15px;white-space:nowrap;padding:2px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:6px;">${scoreVal}<span style="font-size:10px;color:var(--text-muted);font-weight:400;">/10</span></span>`;
       journeyHtml += `    </div>`;
       journeyHtml += `    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">평가 등급: <span style="color:${color};font-weight:700;">${grade}</span></div>`;
