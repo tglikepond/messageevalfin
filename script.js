@@ -1911,13 +1911,9 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 | 🧩 개인화 변수 | ${stats.personalizationCount}개 | (개인 맞춤 수준 분석) |
 | 🎯 CTA 버튼 수 | ${ctaLinks.length}개 | (주의 산만 유무 판정) |
 
-### 🏆 종합 성과 지수 (Total Performance Index) : __점 / 100점
-*계산 산식: [📬 오픈 지수(1~8번 평균) * 0.8] + [🎯 전환 지수(9~10번 평균) * 0.2]*
-${pastCampaigns.length > 0 ? '(과거 최근 10건 평균 대비 +/-__점)' : ''}
-
 ### 📋 10단계 고객 행동 여정 상세 리포트
-**아래 10가지 단계에 대해 빠짐없이, 각각 3문장 이상 분석을 제공하세요.**
-*반드시 메시지의 실제 텍스트 문구를 직접 인용하고, 구체적 수정 예시 표현을 작성하고, 대조군이 있을 경우 대조군과의 피처 편차(글자수 차이, 요일 타이밍 차이 등)를 구체적인 수치로 비교 분석에 명시해 주세요.*
+**아래 10가지 단계에 대해 핵심 위주로 각각 1~2문장의 분석을 간결하고 명확하게 제공하세요.**
+*반드시 메시지의 실제 문구를 직접 인용하고 구체적 개선 수치 편차를 핵심 위주로 명시하되, 불필요하게 서술을 늘리지 마세요.*
 
 1. **첫 줄 및 프리뷰 후킹력**: _점/10
 2. **비주얼 후킹 및 이모지 조화**: _점/10
@@ -1945,6 +1941,155 @@ ${openRate || convertRate ? `
 - **B안 (정보 가치 중심 교정본)**: (실제 메시지 완성본 제공)
 `;
   return p;
+}
+
+function parseJsonRobustly(content) {
+  if (!content) return null;
+  const trimmed = content.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch (e) {
+    console.warn('Standard JSON.parse failed, attempting repair...', e);
+  }
+
+  // Fallback 1: Truncation Repair (close unclosed quotes, braces, brackets)
+  let repaired = trimmed;
+  
+  // Count non-escaped double quotes
+  let quoteCount = 0;
+  for (let i = 0; i < repaired.length; i++) {
+    if (repaired[i] === '"' && (i === 0 || repaired[i-1] !== '\\')) {
+      quoteCount++;
+    }
+  }
+  if (quoteCount % 2 !== 0) {
+    repaired += '"';
+  }
+
+  // Count braces & brackets
+  let openBraces = (repaired.match(/\{/g) || []).length;
+  let closeBraces = (repaired.match(/\}/g) || []).length;
+  let openBrackets = (repaired.match(/\[/g) || []).length;
+  let closeBrackets = (repaired.match(/\]/g) || []).length;
+
+  while (openBraces > closeBraces) {
+    repaired += '}';
+    closeBraces++;
+  }
+  while (openBrackets > closeBrackets) {
+    repaired += ']';
+    closeBrackets++;
+  }
+
+  try {
+    return JSON.parse(repaired);
+  } catch (e) {
+    console.warn('Repaired JSON.parse failed, trying regex extractor...', e);
+  }
+
+  // Fallback 2: Regex-based Key-Value Extractor for Objects
+  const data = {};
+  const stringMatches = [...repaired.matchAll(/"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g)];
+  stringMatches.forEach(m => {
+    data[m[1]] = m[2].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+  });
+
+  const numMatches = [...repaired.matchAll(/"([^"]+)"\s*:\s*(\d+)/g)];
+  numMatches.forEach(m => {
+    data[m[1]] = parseInt(m[2]);
+  });
+
+  if (Object.keys(data).length > 0) {
+    return data;
+  }
+
+  // Fallback 3: Regex-based Array item extractor (for Recommendations)
+  const arrayMatches = [...repaired.matchAll(/"([^"]+)"/g)];
+  if (arrayMatches.length > 0 && (trimmed.startsWith('[') || trimmed.includes(','))) {
+    return arrayMatches.map(m => m[1]);
+  }
+
+  throw new Error('All JSON parsing fallbacks failed');
+}
+
+function extractJsonBlocks(str) {
+  const sanitized = str.split('\n').map(line => line.replace(/^\s*>\s*/, '')).join('\n');
+  const blocks = [];
+  
+  // 1. Try matching with markdown code blocks (even unclosed ones at the end)
+  const mdMatches = [...sanitized.matchAll(/```json\s*\n?([\s\S]*?)(?:\n?\s*```|$)/g)];
+  mdMatches.forEach(m => {
+    const content = m[1].trim();
+    if (content) blocks.push(content);
+  });
+  
+  // 2. If no markdown blocks found, fallback to curly/square bracket boundaries
+  if (blocks.length === 0) {
+    const braceMatches = [...sanitized.matchAll(/(\{[\s\S]*?\})/g)];
+    braceMatches.forEach(m => blocks.push(m[1].trim()));
+    
+    const bracketMatches = [...sanitized.matchAll(/(\[[\s\S]*?\])/g)];
+    bracketMatches.forEach(m => blocks.push(m[1].trim()));
+  }
+  
+  return blocks;
+}
+
+function parseDetailedJourneyReport(text) {
+  if (!text) return null;
+  const headerKeyword = '10단계 고객 행동 여정 상세 리포트';
+  const journeyHeaderIndex = text.indexOf(headerKeyword);
+  if (journeyHeaderIndex === -1) return null;
+  
+  const afterHeader = text.slice(journeyHeaderIndex);
+  const nextHeadingMatch = afterHeader.slice(50).match(/\n###?\s+|\n##\s+/);
+  const journeyBlock = nextHeadingMatch ? afterHeader.slice(0, nextHeadingMatch.index + 50) : afterHeader;
+  
+  const steps = [];
+  for (let i = 1; i <= 10; i++) {
+    const currentRegex = new RegExp(`(?:^|\\n)${i}\\.\\s+\\*\\*(.+?)\\*\\*(?:\\s*:\\s*|\\s+)?(\\d+점/10|\\d+/10|\\d+점|\\d+)?\\s*\\n?([\\s\\S]*?)(?=\\n(?:${i+1})\\.\\s+|\\n###?\\s+|\\n##\\s+|$)`);
+    const match = journeyBlock.match(currentRegex);
+    if (match) {
+      steps.push({
+        num: i,
+        title: match[1].trim(),
+        scoreText: match[2] ? match[2].trim() : '',
+        content: match[3].trim()
+      });
+    }
+  }
+  return steps;
+}
+
+function formatDetailedCardContent(text) {
+  if (!text) return '';
+  let formatted = text;
+  
+  // Escape HTML entities
+  formatted = formatted.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  
+  // Bold: **text** -> <strong>text</strong>
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  
+  // Italic: *text* -> <em>text</em>
+  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  // Quotes: "text" -> <span style="color:var(--accent-blue);font-weight:600;">"text"</span>
+  formatted = formatted.replace(/"([^"]{2,150})"/g, '<span style="color:var(--accent-blue);font-weight:600;">"$1"</span>');
+  
+  // Inline Code: `code` -> <code style="...">code</code>
+  formatted = formatted.replace(/`(.+?)`/g, '<code style="background:rgba(139,92,246,0.12);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:11px;color:var(--accent-purple);border:1px solid rgba(139,92,246,0.15);">$1</code>');
+  
+  // Convert list items and paragraphs
+  formatted = formatted.split('\n').map(line => {
+    let trimmed = line.trim();
+    if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      return `<div style="margin-left:8px;text-indent:-8px;line-height:1.5;margin-bottom:4px;color:var(--text-secondary);">• ${trimmed.slice(1).trim()}</div>`;
+    }
+    return trimmed ? `<div style="margin-bottom:6px;line-height:1.5;">${trimmed}</div>` : '';
+  }).join('');
+
+  return formatted;
 }
 
 async function runAiEvaluation() {
@@ -1999,10 +2144,46 @@ async function runAiEvaluation() {
     if (!text) {
       throw new Error(`AI 분석 호출에 실패했습니다. (마지막 오류: ${lastError ? lastError.message : '알 수 없음'})`);
     }
-    const jsonBlocks = [...text.matchAll(/```json\s*\n?([\s\S]*?)\n?\s*```/g)];
-    if (jsonBlocks.length >= 1) { try { const parsed = JSON.parse(jsonBlocks[0][1]); aiScores = {}; aiEvalItems.forEach(item => { aiScores[item.id] = Math.max(1, Math.min(10, parseInt(parsed[item.id]) || 5)); }); renderAiScoreGrid(); document.getElementById('aiScoreSummary').style.display = 'block'; } catch (e) { console.warn('score parse fail', e); } }
-    if (jsonBlocks.length >= 2) { try { const parsedImps = JSON.parse(jsonBlocks[1][1]); aiImprovements = {}; aiEvalItems.forEach(item => { if (parsedImps[item.id]) aiImprovements[item.id] = parsedImps[item.id]; }); } catch (e) { console.warn('improvements parse fail', e); } }
-    if (jsonBlocks.length >= 3) { try { const parsedRecs = JSON.parse(jsonBlocks[2][1]); if (Array.isArray(parsedRecs)) { aiRecommendations = parsedRecs; } } catch (e) { console.warn('recommendations parse fail', e); } }
+    text = text.split('\n').map(line => line.replace(/^\s*>\s*/, '')).join('\n');
+    const jsonBlocks = extractJsonBlocks(text);
+    if (jsonBlocks.length >= 1) { 
+      try { 
+        const parsed = parseJsonRobustly(jsonBlocks[0]); 
+        if (parsed) {
+          aiScores = {}; 
+          aiEvalItems.forEach(item => { 
+            aiScores[item.id] = Math.max(1, Math.min(10, parseInt(parsed[item.id]) || 5)); 
+          }); 
+          renderAiScoreGrid(); 
+          document.getElementById('aiScoreSummary').style.display = 'block'; 
+        }
+      } catch (e) { 
+        console.warn('score parse fail', e); 
+      } 
+    }
+    if (jsonBlocks.length >= 2) { 
+      try { 
+        const parsedImps = parseJsonRobustly(jsonBlocks[1]); 
+        if (parsedImps) {
+          aiImprovements = {}; 
+          aiEvalItems.forEach(item => { 
+            if (parsedImps[item.id]) aiImprovements[item.id] = parsedImps[item.id]; 
+          }); 
+        }
+      } catch (e) { 
+        console.warn('improvements parse fail', e); 
+      } 
+    }
+    if (jsonBlocks.length >= 3) { 
+      try { 
+        const parsedRecs = parseJsonRobustly(jsonBlocks[2]); 
+        if (parsedRecs && Array.isArray(parsedRecs)) { 
+          aiRecommendations = parsedRecs; 
+        } 
+      } catch (e) { 
+        console.warn('recommendations parse fail', e); 
+      } 
+    }
     document.getElementById('aiLoading').style.display = 'none'; document.getElementById('aiResultCard').style.display = 'block';
     document.getElementById('aiResultTime').textContent = new Date().toLocaleString('ko-KR') + ' · ' + usedModel;
     const reportHtml = renderAiReportContent(text);
@@ -2018,8 +2199,21 @@ async function runAiEvaluation() {
 }
 
 function renderAiReportContent(rawText) {
-  // 1. Remove ALL code blocks (```json ... ```, ``` ... ```, etc.)
-  let cleanText = rawText.replace(/```[\w]*\s*\n?[\s\S]*?\n?\s*```/g, '');
+  // Check if the response ends with an unclosed code block or has been truncated
+  let isTruncated = false;
+  if (/```[\w]*\s*\n?[^`]*$/.test(rawText)) {
+    isTruncated = true;
+  }
+
+  let cleanText = rawText;
+
+  // Remove TPI block if it exists (for compatibility with older saved evaluations or template leakages)
+  cleanText = cleanText.replace(/^###? 🏆 종합 성과 지수.*$/gm, '');
+  cleanText = cleanText.replace(/^\*계산 산식:.*$/gm, '');
+  cleanText = cleanText.replace(/^\(과거 최근.*$/gm, '');
+
+  // 1. Remove ALL code blocks (even unclosed ones at the very end)
+  cleanText = cleanText.replace(/```[\w]*\s*\n?[\s\S]*?(?:\n?\s*```|$)/g, '');
 
   // 2. Remove stray JSON objects/arrays that might remain
   cleanText = cleanText.replace(/^\s*\{["\w:,\s\d{}\[\].-]+\}\s*$/gm, '');
@@ -2034,32 +2228,69 @@ function renderAiReportContent(rawText) {
   // 4. Remove excessive blank lines
   cleanText = cleanText.replace(/\n{4,}/g, '\n\n\n');
 
-  // 5. Convert to HTML
+  // Pre-parse the 10-step Customer Journey Detailed Report
+  const steps = parseDetailedJourneyReport(cleanText);
+  let journeyHtml = '';
+  if (steps && steps.length >= 8) {
+    // Remove the raw journey block from cleanText so it is not rendered twice as raw markdown
+    const headerKeyword = '10단계 고객 행동 여정 상세 리포트';
+    const journeyHeaderIndex = cleanText.indexOf(headerKeyword);
+    if (journeyHeaderIndex !== -1) {
+      const afterHeader = cleanText.slice(journeyHeaderIndex);
+      const nextHeadingMatch = afterHeader.slice(50).match(/\n###?\s+|\n##\s+/);
+      const journeyBlockLength = nextHeadingMatch ? nextHeadingMatch.index + 50 : afterHeader.length;
+      cleanText = cleanText.slice(0, journeyHeaderIndex) + cleanText.slice(journeyHeaderIndex + journeyBlockLength);
+    }
+
+    // Generate the styled card grid HTML
+    journeyHtml += `<div style="margin-bottom:24px;padding:20px;background:rgba(139,92,246,0.03);border:1px solid rgba(139,92,246,0.12);border-radius:var(--radius-md);">`;
+    journeyHtml += `<h3 style="margin:0 0 16px 0;font-size:16px;color:var(--accent-purple);display:flex;align-items:center;gap:8px;">📋 10단계 고객 행동 여정 상세 리포트</h3>`;
+    journeyHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">`;
+    
+    steps.forEach((step) => {
+      const itemConfig = aiEvalItems[step.num - 1] || {};
+      const icon = itemConfig.icon || '📍';
+      
+      let scoreVal = 5;
+      if (step.scoreText) {
+        const scoreMatch = step.scoreText.match(/(\d+)/);
+        if (scoreMatch) scoreVal = parseInt(scoreMatch[1]);
+      } else if (aiScores[itemConfig.id]) {
+        scoreVal = aiScores[itemConfig.id];
+      }
+      
+      const color = scoreVal >= 8 ? 'var(--accent-emerald)' : scoreVal >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';
+      const grade = scoreVal >= 8 ? '우수' : scoreVal >= 5 ? '보통' : '개선 필요';
+      
+      const formattedContent = formatDetailedCardContent(step.content);
+      
+      journeyHtml += `<div style="padding:14px 18px;background:rgba(15,23,42,0.45);border-radius:10px;border:1px solid var(--border-glass);display:flex;flex-direction:column;justify-content:space-between;">`;
+      journeyHtml += `  <div>`;
+      journeyHtml += `    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:12px;">`;
+      journeyHtml += `      <span style="font-size:14px;font-weight:700;color:var(--text-primary);line-height:1.4;">${step.num}. ${icon} ${step.title}</span>`;
+      journeyHtml += `      <span style="color:${color};font-weight:800;font-size:15px;white-space:nowrap;padding:2px 8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:6px;">${scoreVal}<span style="font-size:10px;color:var(--text-muted);font-weight:400;">/10</span></span>`;
+      journeyHtml += `    </div>`;
+      journeyHtml += `    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">평가 등급: <span style="color:${color};font-weight:700;">${grade}</span></div>`;
+      journeyHtml += `    <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin-top:6px;word-break:keep-all;">${formattedContent}</div>`;
+      journeyHtml += `  </div>`;
+      journeyHtml += `</div>`;
+    });
+    
+    journeyHtml += `</div></div>`;
+  }
+
+  // 5. Convert cleanText to HTML
   let html = markdownToHtml(cleanText);
 
-  // 6. Prepend score summary grid if scores exist
-  const hasScores = Object.keys(aiScores).length > 0;
-  if (hasScores) {
-    let summaryHtml = `<div style="margin-bottom:24px;padding:16px;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15);border-radius:var(--radius-md);">`;
-    summaryHtml += `<h4 style="margin-bottom:12px;color:var(--text-primary);">📋 10가지 항목 요약</h4>`;
-    summaryHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;">`;
-    aiEvalItems.forEach((item) => {
-      const score = aiScores[item.id] || 5;
-      const improvement = aiImprovements[item.id] || item.rec;
-      const color = score >= 8 ? 'var(--accent-emerald)' : score >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';
-      const grade = score >= 8 ? '우수' : score >= 5 ? '보통' : '개선 필요';
-      summaryHtml += `<div style="padding:10px 14px;background:rgba(15,23,42,0.4);border-radius:8px;border:1px solid var(--border-glass);">`;
-      summaryHtml += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">`;
-      summaryHtml += `<span style="font-size:13px;font-weight:700;">${item.icon} ${item.title}</span>`;
-      summaryHtml += `<span style="color:${color};font-weight:800;font-size:16px;">${score}<span style="font-size:11px;color:var(--text-muted);">/10</span></span>`;
-      summaryHtml += `</div>`;
-      summaryHtml += `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">등급: <span style="color:${color};font-weight:600;">${grade}</span></div>`;
-      summaryHtml += `<div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">💡 ${improvement}</div>`;
-      summaryHtml += `</div>`;
-    });
-    summaryHtml += `</div></div>`;
-    html = summaryHtml + html;
+  // Prepend journey card grid if parsed successfully
+  if (journeyHtml) {
+    html = journeyHtml + html;
   }
+
+  if (isTruncated) {
+    html += `<div style="margin-top:24px;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-md);font-size:12px;color:var(--accent-rose);text-align:center;line-height:1.5;">💡 생성 용량 한계로 인해 AI 상세 리포트가 중간에 요약 또는 생략되었습니다. 상단의 상세 여정 카드 정보를 참고해 주세요.</div>`;
+  }
+
   return html;
 }
 
@@ -2121,8 +2352,21 @@ function markdownToHtml(md) {
   // 5. Inline code
   html = html.replace(/`(.+?)`/g, '<code style="background:rgba(139,92,246,0.1);padding:2px 6px;border-radius:4px;font-size:12px;">$1</code>');
 
+  // Protect HTML tags before quote highlighting to prevent attribute corruption
+  const htmlTags = [];
+  html = html.replace(/<[^>]+>/g, function (match) {
+    const placeholder = `%%HTML_TAG_${htmlTags.length}%%`;
+    htmlTags.push(match);
+    return placeholder;
+  });
+
   // 6. Quoted text highlight
   html = html.replace(/"([^"]{2,80})"/g, '<span style="color:var(--accent-blue);font-weight:600;">"$1"</span>');
+
+  // Restore HTML tags after quote highlighting
+  htmlTags.forEach((tag, i) => {
+    html = html.split(`%%HTML_TAG_${i}%%`).join(tag);
+  });
 
   // 7. Numbered lists
   html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0;padding:4px 0;"><span style="color:var(--accent-purple);font-weight:700;min-width:20px;">$1.</span><span>$2</span></div>');
