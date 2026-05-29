@@ -1934,11 +1934,6 @@ ${openRate || convertRate ? `
 ` : `
 실측 성과 수치가 입력되지 않았습니다. 과거 누적 발송 결과와 1:1 비교를 기반으로 할 때 이번 메시지의 **예상 오픈율 범위는 XX%~XX%, 예상 전환율 범위는 XX%~XX%**로 예측 시뮬레이션됩니다. 그 이유와 함께 예측의 근거를 기술하세요.
 `}
-
-### 📝 종합 추천 수정 문구 (A/B 시안 제공)
-*마케터가 즉시 복사해서 발송할 수 있도록 10대 지표를 완벽히 반영하여 교정한 완성본 메시지 시안을 제공하세요.*
-- **A안 (감성 터치 중심 교정본)**: (실제 메시지 완성본 제공)
-- **B안 (정보 가치 중심 교정본)**: (실제 메시지 완성본 제공)
 `;
   return p;
 }
@@ -2209,6 +2204,18 @@ function renderAiReportContent(rawText) {
   cleanText = cleanText.replace(/^###? 🏆 종합 성과 지수.*$/gm, '');
   cleanText = cleanText.replace(/^\*계산 산식:.*$/gm, '');
   cleanText = cleanText.replace(/^\(과거 최근.*$/gm, '');
+
+  // Remove "종합 추천 수정 문구" block if it exists (for compatibility with older saved evaluations)
+  const recommendKeyword = '종합 추천 수정 문구';
+  const recommendHeaderIndex = cleanText.indexOf(recommendKeyword);
+  if (recommendHeaderIndex !== -1) {
+    const headerStart = cleanText.lastIndexOf('###', recommendHeaderIndex);
+    const sliceIndex = headerStart !== -1 ? headerStart : recommendHeaderIndex;
+    const afterHeader = cleanText.slice(recommendHeaderIndex);
+    const nextHeadingMatch = afterHeader.slice(30).match(/\n###?\s+|\n##\s+/);
+    const blockLength = nextHeadingMatch ? nextHeadingMatch.index + 30 : afterHeader.length;
+    cleanText = cleanText.slice(0, sliceIndex) + cleanText.slice(recommendHeaderIndex + blockLength);
+  }
 
   // 1. Remove ALL code blocks (even unclosed ones at the very end)
   cleanText = cleanText.replace(/```[\w]*\s*\n?[\s\S]*?(?:\n?\s*```|$)/g, '');
