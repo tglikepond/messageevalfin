@@ -221,40 +221,16 @@
         </div>
       </div>
 
-      <!-- AI 분석 결과 영역 -->
-      <div class="section" id="aiResultSection" style="display:none;">
-        <div class="section-header">
-          <div class="section-title">
-            <div class="icon icon-purple">🤖</div>AI 평가 결과
-          </div><span class="section-badge">Powered by Gemini</span>
-        </div>
-        <div id="aiScoreSummary" style="display:none;">
-          <div class="ai-score-grid" id="aiScoreGrid"></div>
-        </div>
-        <div id="aiResultArea">
-          <div class="ai-loading" id="aiLoading" style="display:none;">
-            <div class="ai-spinner"></div>
-            <div class="ai-loading-text">AI가 메시지를 분석하고 있습니다...</div>
-          </div>
-          <div class="ai-result-card" id="aiResultCard" style="display:none;">
-            <div class="ai-result-header"><span style="font-size:24px;">🤖</span>
-              <div><strong style="font-size:15px;">AI 평가 리포트</strong><br><span
-                  style="font-size:12px;color:var(--text-muted);" id="aiResultTime"></span></div>
-              <span class="ai-badge">AI Generated</span>
-            </div>
-            <div class="ai-result-content" id="aiResultContent"></div>
-          </div>
-        </div>
+      <!-- AI 분석 대기/로딩 영역 -->
+      <div class="ai-loading-container" id="aiLoadingContainer" style="display:none; margin-top:20px; background:rgba(15,23,42,0.4); border:1px solid var(--border-glass); border-radius:var(--radius-md); padding:30px; text-align:center;">
+        <div class="ai-spinner" style="margin:0 auto 16px;"></div>
+        <div class="ai-loading-text" id="aiLoadingText" style="font-size:15px; font-weight:600; color:var(--text-primary);">AI가 메시지를 분석하고 있습니다...</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:8px;">완료 시 종합 결과 탭으로 자동 이동합니다.</p>
       </div>
 
       <!-- 버튼 그룹 -->
       <div class="btn-group">
         <button class="btn btn-ai" id="aiRunBtn" onclick="runAiAndSave()">🤖 AI 분석 실행 및 저장</button>
-        <button class="btn btn-primary" id="showResultBtn" onclick="saveAndShowResult()" disabled
-          style="opacity:0.5;cursor:not-allowed;">📊 저장 후 종합 결과 보기</button>
-        <p id="resultBtnHint"
-          style="font-size:12px;color:var(--text-muted);text-align:center;width:100%;margin-top:-4px;">💡 AI 분석을 먼저 실행해야
-          종합 결과를 볼 수 있습니다.</p>
       </div>
     </div>
 
@@ -554,51 +530,32 @@
           </div>
         </div>
 
-        <!-- 캠페인 런칭 To-Do 체크리스트 -->
-        <div class="section" id="launchingChecklistSection" style="margin-top:20px;">
+        <!-- AI 평가 결과 & 리포트 영역 -->
+        <div class="section" id="aiResultSection" style="display:none; margin-top:20px;">
           <div class="section-header">
             <div class="section-title">
-              <div class="icon icon-emerald">✅</div>캠페인 런칭 필수 가동 체크리스트
+              <div class="icon icon-purple">🤖</div>AI 평가 결과
             </div>
-            <span class="section-badge"
-              style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);border:1px solid rgba(16,185,129,0.2);">Launch
-              Checklist</span>
+            <span class="section-badge">Powered by Gemini</span>
           </div>
-          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">
-            AI 평가 결과 <strong>6점 이하의 취약점 항목</strong>에 대해 생성된 구체적인 개선 권장사항 액션 플랜입니다. 발송 전 확인하여 체크박스를 채워 보세요!
-          </p>
-          <div id="launchingTodoContainer" style="display:flex;flex-direction:column;gap:10px;">
-            <!-- To-Do 체크 아이템이 dynamic하게 주입됩니다 -->
+          <div id="aiScoreSummary" style="display:none;">
+            <div class="ai-score-grid" id="aiScoreGrid"></div>
+          </div>
+          <div class="ai-result-card" id="aiResultCard" style="display:none; margin-top:20px;">
+            <div class="ai-result-header">
+              <span style="font-size:24px;">🤖</span>
+              <div>
+                <strong style="font-size:15px;">AI 평가 리포트</strong><br>
+                <span style="font-size:12px;color:var(--text-muted);" id="aiResultTime"></span>
+              </div>
+              <span class="ai-badge">AI Generated</span>
+            </div>
+            <div class="ai-result-content" id="aiResultContent"></div>
           </div>
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title">
-            <div class="icon icon-blue">📋</div>AI 항목별 평가 (10항목)
-          </div>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="result-table">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>평가 항목</th>
-                <th>AI 점수</th>
-                <th>등급</th>
-                <th>개선사항</th>
-              </tr>
-            </thead>
-            <tbody id="resultBody">
-              <tr>
-                <td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">캠페인을 선택해 주세요.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      <!-- 개선 권장사항 -->
       <div class="section">
         <div class="section-header">
           <div class="section-title">
@@ -609,6 +566,23 @@
           <p style="color:var(--text-muted);text-align:center;padding:20px;">캠페인을 선택하면 표시됩니다.</p>
         </div>
       </div>
+
+      <!-- 캠페인 런칭 To-Do 체크리스트 (최하단으로 이동) -->
+      <div class="section" id="launchingChecklistSection" style="display:none; margin-top:20px;">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon icon-emerald">✅</div>캠페인 런칭 필수 가동 체크리스트
+          </div>
+          <span class="section-badge" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);border:1px solid rgba(16,185,129,0.2);">Launch Checklist</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">
+          AI 평가 결과 <strong>6점 이하의 취약점 항목</strong>에 대해 생성된 구체적인 개선 권장사항 액션 플랜입니다. 발송 전 확인하여 체크박스를 채워 보세요!
+        </p>
+        <div id="launchingTodoContainer" style="display:flex;flex-direction:column;gap:10px;">
+          <!-- To-Do 체크 아이템이 dynamic하게 주입됩니다 -->
+        </div>
+      </div>
+
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="exportReport()">📥 리포트 내보내기</button>
         <button class="btn btn-primary" onclick="startNewEval()">➕ 새 평가 시작</button>

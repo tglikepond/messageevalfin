@@ -136,6 +136,7 @@ function initFirestore() {
 let aiScores = {};
 let aiImprovements = {};
 let aiRecommendations = [];
+let lastUsedModel = '';
 let feedbackRating = 0;
 let feedbackEnabled = false;
 let aiCompleted = false;
@@ -298,6 +299,7 @@ async function saveCampaignData() {
     aiImprovements: { ...aiImprovements },
     aiRecommendations: [...aiRecommendations],
     aiReport: document.getElementById('aiResultContent')?.innerHTML || '',
+    aiModel: lastUsedModel || '',
     feedback: feedbackEnabled ? {
       rating: feedbackRating,
       relevance: parseInt(document.getElementById('fbRelevance').value) || 5,
@@ -356,7 +358,10 @@ function clearCampaignResult() {
   const statsSection = document.getElementById('resultMsgStatsSection');
   if (statsSection) statsSection.style.display = 'none';
   
-  document.getElementById('resultBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">캠페인을 선택해 주세요.</td></tr>';
+  document.getElementById('aiResultSection').style.display = 'none';
+  document.getElementById('aiScoreSummary').style.display = 'none';
+  document.getElementById('aiResultCard').style.display = 'none';
+  document.getElementById('launchingChecklistSection').style.display = 'none';
 }
 
 function refreshResultSelector() {
@@ -485,13 +490,30 @@ function loadCampaignResult() {
     <strong>오픈율:</strong> <span style="color:var(--accent-blue)">${c.openRate}%</span> · 
     <strong>전환율:</strong> <span style="color:var(--accent-emerald)">${c.convertRate}%</span>`;
 
-  // AI summary
+  // AI summary and detailed report
   if (hasAi) {
     document.getElementById('resultAiSummary').innerHTML = `
       <strong>AI 종합:</strong> <span style="color:var(--accent-purple)">${aiPct}점</span>/100<br>
       ${aiEvalItems.map(it => `${it.icon} ${it.title}: <strong>${c.aiScores[it.id] || '-'}</strong>`).join('<br>')}`;
+
+    // Show AI result sections in Tab 2
+    document.getElementById('aiResultSection').style.display = 'block';
+    document.getElementById('aiScoreSummary').style.display = 'block';
+    document.getElementById('aiResultCard').style.display = 'block';
+    document.getElementById('aiResultTime').textContent = c.aiModel ? `${c.sendDate || c.createdAt || ''} · ${c.aiModel}` : 'AI Generated';
+    
+    // Restore global states to render score grid correctly
+    aiScores = c.aiScores || {};
+    aiImprovements = c.aiImprovements || {};
+    renderAiScoreGrid();
+
+    // Restore report HTML
+    document.getElementById('aiResultContent').innerHTML = c.aiReport || '';
   } else {
     document.getElementById('resultAiSummary').innerHTML = '<span style="color:var(--text-muted)">AI 평가 미실행</span>';
+    document.getElementById('aiResultSection').style.display = 'none';
+    document.getElementById('aiScoreSummary').style.display = 'none';
+    document.getElementById('aiResultCard').style.display = 'none';
   }
 
   // Feedback summary
@@ -566,20 +588,8 @@ function loadCampaignResult() {
     statsSection.style.display = 'none';
   }
 
-  // Result table (AI 10 items)
+  // Result table (AI 10 items) - removed from UI, but keep aiImps for recommendations below
   const aiImps = c.aiImprovements || {};
-  const rows = aiEvalItems.map((item, i) => {
-    const aiScore = hasAi ? (c.aiScores[item.id] || '-') : '-';
-    const scoreForGrade = typeof aiScore === 'number' ? aiScore : 5;
-    const grade = scoreForGrade >= 8 ? 'high' : scoreForGrade >= 5 ? 'mid' : 'low';
-    const gradeLabel = scoreForGrade >= 8 ? '우수' : scoreForGrade >= 5 ? '보통' : '개선 필요';
-    const improvement = aiImps[item.id] || (scoreForGrade < 7 ? item.rec : '현 수준 유지');
-    return `<tr><td>${i + 1}</td><td><strong>${item.icon} ${item.title}</strong></td>
-      <td style="color:var(--accent-purple);font-weight:700;">${aiScore}</td>
-      <td><span class="score-badge ${grade}">${gradeLabel}</span></td>
-      <td style="font-size:12px;color:var(--text-secondary)">${improvement}</td></tr>`;
-  });
-  document.getElementById('resultBody').innerHTML = rows.join('');
 
   // Recommendations
   const savedRecs = c.aiRecommendations || [];
@@ -1452,7 +1462,9 @@ function resetAll() {
   ['fbRelevance', 'fbWillingness'].forEach(id => { document.getElementById(id).value = 5; });
   ['fbRelVal', 'fbWillVal'].forEach(id => { document.getElementById(id).textContent = '5'; });
   ['fbCount', 'fbComment'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  removeAiImage(); document.getElementById('aiResultSection').style.display = 'none';
+  removeAiImage();
+  document.getElementById('aiResultSection').style.display = 'none';
+  document.getElementById('aiLoadingContainer').style.display = 'none';
   // Reset filters
   const dateFilter = document.getElementById('filterCampaignDate');
   const typeFilter = document.getElementById('filterCampaignType');
@@ -1462,9 +1474,6 @@ function resetAll() {
   document.getElementById('ctaLinksContainer').innerHTML = '';
   addCtaLink();
   toggleFeedback(false);
-  // Disable result button
-  const resultBtn = document.getElementById('showResultBtn'); if (resultBtn) { resultBtn.disabled = true; resultBtn.style.opacity = '0.5'; resultBtn.style.cursor = 'not-allowed'; }
-  const hint = document.getElementById('resultBtnHint'); if (hint) hint.style.display = 'block';
 }
 
 function toggleFeedback(enabled) {
@@ -1483,13 +1492,7 @@ function toggleFeedback(enabled) {
   }
 }
 
-function enableResultButton() {
-  aiCompleted = true;
-  const btn = document.getElementById('showResultBtn');
-  if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
-  const hint = document.getElementById('resultBtnHint');
-  if (hint) hint.style.display = 'none';
-}
+
 function exportReport() {
   const id = parseInt(document.getElementById('resultCampaignSelect').value); if (!id) { showToast('⚠️ 캠페인 선택'); return; }
   const c = loadCampaigns().find(x => x.id === id); if (!c) return;
@@ -2091,8 +2094,8 @@ async function runAiEvaluation() {
   const msgBody = document.getElementById('aiMsgBody').value.trim();
   if (!msgBody) { showToast('⚠️ 메시지 본문 필요'); return; }
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
-  document.getElementById('aiResultSection').style.display = 'block'; document.getElementById('aiLoading').style.display = 'flex';
-  document.getElementById('aiResultCard').style.display = 'none'; document.getElementById('aiScoreSummary').style.display = 'none';
+  document.getElementById('aiLoadingContainer').style.display = 'block';
+  document.getElementById('aiLoadingText').textContent = 'AI가 메시지를 분석하고 있습니다...';
   const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
   try {
     const parts = [{ text: buildAiPrompt() }]; if (aiImageBase64) parts.push({ inline_data: { mime_type: aiImageMimeType, data: aiImageBase64 } });
@@ -2100,7 +2103,7 @@ async function runAiEvaluation() {
     let lastError = null;
     for (const model of models) {
       try {
-        document.querySelector('.ai-loading-text').textContent = `${model} 모델로 분석 중...`;
+        document.getElementById('aiLoadingText').textContent = `${model} 모델로 분석 중...`;
         const res = await fetchGemini(model, [{ parts }], { temperature: 0.7, maxOutputTokens: 8192 });
         if (res.ok) { 
           const data = await res.json(); 
@@ -2179,17 +2182,23 @@ async function runAiEvaluation() {
         console.warn('recommendations parse fail', e); 
       } 
     }
-    document.getElementById('aiLoading').style.display = 'none'; document.getElementById('aiResultCard').style.display = 'block';
+    document.getElementById('aiLoadingContainer').style.display = 'none';
+    lastUsedModel = usedModel;
     document.getElementById('aiResultTime').textContent = new Date().toLocaleString('ko-KR') + ' · ' + usedModel;
     const reportHtml = renderAiReportContent(text);
     document.getElementById('aiResultContent').innerHTML = reportHtml;
     // Auto-save after AI evaluation
-    saveCampaignData();
-    enableResultButton();
-    showToast('🤖 AI 평가 완료! 종합 결과에서 확인하세요.');
+    await saveCampaignData();
+    aiCompleted = true;
+    showToast('🤖 AI 평가 완료 및 자동 저장되었습니다.');
+    switchTab('results');
+    if (currentCampaignId) {
+      document.getElementById('resultCampaignSelect').value = currentCampaignId;
+      loadCampaignResult();
+    }
   } catch (error) {
-    document.getElementById('aiLoading').style.display = 'none'; document.getElementById('aiResultCard').style.display = 'block';
-    document.getElementById('aiResultContent').innerHTML = `<div style="color:var(--accent-rose);padding:20px;text-align:center;"><p style="font-size:18px;margin-bottom:8px;">⚠️ 오류</p><p>${error.message}</p>${error.message.includes('API 키') ? '<p style="margin-top:12px;font-size:13px;color:var(--text-muted);">💡 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-blue);">Google AI Studio</a>에서 유효한 API 키를 발급받으세요.</p>' : ''}</div>`;
+    document.getElementById('aiLoadingContainer').style.display = 'none';
+    alert('⚠️ AI 분석 중 오류가 발생했습니다:\n' + error.message);
   } finally { btn.disabled = false; btn.textContent = '🤖 AI 분석 실행 및 저장'; }
 }
 
