@@ -577,29 +577,8 @@ function loadCampaignResult() {
     statsSection.style.display = 'none';
   }
 
-  // Result table (AI 10 items) - removed from UI, but keep aiImps for recommendations below
+  // Result table (AI 10 items) - removed from UI, but keep aiImps for reference
   const aiImps = c.aiImprovements || {};
-
-  // Recommendations
-  const savedRecs = c.aiRecommendations || [];
-  const allItems = aiEvalItems.map(it => {
-    const aiS = hasAi ? c.aiScores[it.id] : null;
-    const best = typeof aiS === 'number' ? aiS : 5;
-    return { ...it, bestScore: best, aiRec: aiImps[it.id] || it.rec };
-  });
-  const lowItems = allItems.filter(it => it.bestScore < 7);
-  const rd = document.getElementById('recommendations');
-
-  if (savedRecs.length > 0) {
-    rd.innerHTML = `<div class="comparison-grid">${savedRecs.map((rec, i) => `<div class="comparison-card"><h4>💡 권장사항 ${i + 1}</h4><p>${rec}</p></div>`).join('')}</div>`;
-    if (lowItems.length > 0) {
-      rd.innerHTML += `<div style="margin-top:16px;"><h4 style="margin-bottom:12px;font-size:14px;color:var(--text-primary);">⚠️ 개선 필요 항목 (점수 7점 미만)</h4><div class="comparison-grid">${lowItems.slice(0, 6).map(it => `<div class="comparison-card"><h4>${it.icon} ${it.title} <span class="score-badge low" style="font-size:11px;margin-left:8px;">${it.bestScore}점</span></h4><p>${it.aiRec}</p></div>`).join('')}</div></div>`;
-    }
-  } else if (!lowItems.length) {
-    rd.innerHTML = '<div class="comparison-card"><h4>🎉 모든 항목 양호</h4><p>A/B 테스트로 지속 최적화하세요.</p></div>';
-  } else {
-    rd.innerHTML = `<div class="comparison-grid">${lowItems.slice(0, 6).map(it => `<div class="comparison-card"><h4>${it.icon} ${it.title} <span class="score-badge low" style="font-size:11px;margin-left:8px;">${it.bestScore}점</span></h4><p>${it.aiRec}</p></div>`).join('')}</div>`;
-  }
 
   // 1:1 Side-by-side Feature Contrast Matrix
   const pastCampaigns = loadCampaigns().filter(camp => camp.aiScores && Object.keys(camp.aiScores).length > 0 && camp.id !== id);
@@ -1799,6 +1778,14 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 - 개인화 변수 수: ${stats.personalizationCount}개 (탐지됨: ${stats.personalizationMatches && stats.personalizationMatches.length > 0 ? stats.personalizationMatches.join(', ') : '없음'})
 - 본문 내 URL 수: ${stats.urlCount}개
 - CTA 버튼 수: ${ctaLinks.length}개
+
+### 📐 정량 피처 요약 분석
+| 평가지표 | 이번 메시지 수치 | 마케팅 성과 영향 요약 |
+|---|---|---|
+| 📝 총 글자 수 | ${stats.charCount}자 | (분량 적정성 분석) |
+| 😄 이모지 개수 | ${stats.emojiCount}개 | (비주얼 밀도 분석) |
+| 🧩 개인화 변수 | ${stats.personalizationCount}개 | (개인 맞춤 수준 분석) |
+| 🎯 CTA 버튼 수 | ${ctaLinks.length}개 | (주의 산만 유무 판정) |
 `;
 
   // Analysis framework
@@ -1873,7 +1860,7 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 \`\`\`
 
 ## 📝 상세 분석 리포트 (JSON 블록 이후 작성)
-**※ 모든 분석문은 빽빽한 줄글 형태의 긴 서술을 철저히 배제하고, 핵심만 바로 파악할 수 있도록 볼드와 기호(🎯, 🔎)로 구획을 나누어 도식화하여 가독성을 극대화해 출력해 주세요.**
+**※ 모든 분석문은 빽빽한 줄글 형태의 긴 서술을 철저히 배제하고, 핵심만 바로 파악할 수 있도록 볼드와 기호(🎯, 🔎, 📌, 🌟)로 구획을 나누어 도식화하여 가독성을 극대화해 출력해 주세요.**
 
 ### 📈 평가 지표와 성과(오픈율·전환율) 간의 상관관계 분석
 - **오픈 요인 상관관계 (1~8단계)**
@@ -1885,6 +1872,21 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 - **대조군 비교 상관 추이**
   - 🎯 **[핵심 결론]**: (과거 우수 대조군 대비 이번 캠페인의 종합 성과 변화 요약 1문장)
   - 🔎 **[세부 분석]**: (대조군들 대비 지표 점수의 상승/하락이 실제(또는 예상) 오픈율/전환율 변동과 어떻게 연동되는지 2문장 내외로 명확히 비교 분석)
+
+### 🔍 1:1 다차원 성과 인과관계 분석 (Causal Ablation Analysis)
+${openRate || convertRate ? `
+- 🌟 **[분석 대상 대조군]**: 과거 대조군 A 및 대조군 B (과거 최고 성과 및 유사 성격 캠페인)
+- 📌 **오픈율 성과 차이 요인**
+  - **요일/시간 격차**: (요일/시간 조건 차이가 발송 대상의 수신 심리에 미친 영향을 핵심 요약형 2문장으로 비교)
+  - **수신 피처 격차**: (글자 수, 이모지 수 등 외형 피처 차이에 따른 수신 피로도 및 오픈 유도 인과관계를 2문장으로 기술)
+- 📌 **전환율 성과 차이 요인**
+  - **CTA/메시지 피처 격차**: (CTA 구성 및 여정 9~10단계 지표 완성도 차이가 클릭 전환에 미친 상세 원인을 2문장으로 비교)
+` : `
+- 🌟 **[분석 대상 대조군]**: 과거 대조군 A 및 대조군 B (과거 최고 성과 및 유사 성격 캠페인)
+- 📌 **예상 성과 시뮬레이션**
+  - **예상 오픈율 범위**: **XX% ~ XX%** (그 근거를 대조군 발송 환경 및 여정 1~8단계 점수 비교를 기반으로 2문장 기술)
+  - **예상 전환율 범위**: **XX% ~ XX%** (그 근거를 대조군 CTA 및 여정 9~10단계 점수 비교를 기반으로 2문장 기술)
+`}
 `;
   return p;
 }
@@ -2291,11 +2293,15 @@ function renderAiScoreGrid() {
   document.getElementById('aiScoreGrid').innerHTML = aiEvalItems.map(item => {
     const s = aiScores[item.id] || 5;
     const color = s >= 8 ? 'var(--accent-emerald)' : s >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';
-    return `<div class="ai-score-item">
-      <div class="score-num" style="color:${color}">${s}</div>
-      <div class="score-info"><div class="score-name">${item.icon} ${item.title}</div>
-        <div class="score-bar"><div class="score-bar-fill" style="width:${s * 10}%;background:${color};"></div></div>
+    const improvement = aiImprovements[item.id] || item.rec;
+    return `<div class="ai-score-item" style="flex-direction:column;align-items:stretch;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="score-num" style="color:${color}">${s}</div>
+        <div class="score-info"><div class="score-name">${item.icon} ${item.title}</div>
+          <div class="score-bar"><div class="score-bar-fill" style="width:${s * 10}%;background:${color};"></div></div>
+        </div>
       </div>
+      <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;padding-left:48px;line-height:1.5;">💡 ${improvement}</div>
     </div>`;
   }).join('') + `<div class="ai-score-item" style="border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.06);"><div class="score-num" style="font-size:28px;color:var(--accent-purple);">${aiPct}</div><div class="score-info"><div class="score-name" style="font-size:14px;font-weight:700;">종합 /100</div></div></div>`;
 }

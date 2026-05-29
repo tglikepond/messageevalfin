@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/gemini-proxy",
-      "destination": "/api/gemini-proxy.js"
-    }
-  ]
-}
