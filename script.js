@@ -1889,13 +1889,8 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 {"first_line_attraction":"개선안","visual_emoji_harmony":"개선안","personalization_density":"개선안","opening_conciseness":"개선안","timing_optimization":"개선안","urgency_trigger":"개선안","cognitive_readability":"개선안","value_pre_exposure":"개선안","copywriting_quality":"개선안","cta_actionability":"개선안"}
 \`\`\`
 
-**세 번째 JSON 블록** - 즉시 실행해야 하는 우선순위별 종합 개선 액션 가이드 (3~5개):
-\`\`\`json
-["액션1","액션2","액션3"]
-\`\`\`
-
 ## 📝 상세 분석 리포트 (JSON 블록 이후 작성)
-**※ 모든 분석문은 빽빽한 줄글 형태의 긴 서술을 철저히 배제하고, 핵심만 바로 파악할 수 있도록 볼드와 기호(🎯, 🔎, 📌, 🌟)로 구획을 나누어 도식화하여 가독성을 극대화해 출력해 주세요.**
+**※ 모든 분석문은 빽빽한 줄글 형태의 긴 서술을 철저히 배제하고, 핵심만 바로 파악할 수 있도록 볼드와 기호(🎯, 🔎)로 구획을 나누어 도식화하여 가독성을 극대화해 출력해 주세요.**
 
 ### 📈 평가 지표와 성과(오픈율·전환율) 간의 상관관계 분석
 - **오픈 요인 상관관계 (1~8단계)**
@@ -1907,21 +1902,6 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 - **대조군 비교 상관 추이**
   - 🎯 **[핵심 결론]**: (과거 우수 대조군 대비 이번 캠페인의 종합 성과 변화 요약 1문장)
   - 🔎 **[세부 분석]**: (대조군들 대비 지표 점수의 상승/하락이 실제(또는 예상) 오픈율/전환율 변동과 어떻게 연동되는지 2문장 내외로 명확히 비교 분석)
-
-### 🔍 1:1 다차원 성과 인과관계 분석 (Causal Ablation Analysis)
-${openRate || convertRate ? `
-- 🌟 **[분석 대상 대조군]**: 과거 대조군 A 및 대조군 B (과거 최고 성과 및 유사 성격 캠페인)
-- 📌 **오픈율 성과 차이 요인**
-  - **요일/시간 격차**: (요일/시간 조건 차이가 발송 대상의 수신 심리에 미친 영향을 핵심 요약형 2문장으로 비교)
-  - **수신 피처 격차**: (글자 수, 이모지 수 등 외형 피처 차이에 따른 수신 피로도 및 오픈 유도 인과관계를 2문장으로 기술)
-- 📌 **전환율 성과 차이 요인**
-  - **CTA/메시지 피처 격차**: (CTA 구성 및 여정 9~10단계 지표 완성도 차이가 클릭 전환에 미친 상세 원인을 2문장으로 비교)
-` : `
-- 🌟 **[분석 대상 대조군]**: 과거 대조군 A 및 대조군 B (과거 최고 성과 및 유사 성격 캠페인)
-- 📌 **예상 성과 시뮬레이션**
-  - **예상 오픈율 범위**: **XX% ~ XX%** (그 근거를 대조군 발송 환경 및 여정 1~8단계 점수 비교를 기반으로 2문장 기술)
-  - **예상 전환율 범위**: **XX% ~ XX%** (그 근거를 대조군 CTA 및 여정 9~10단계 점수 비교를 기반으로 2문장 기술)
-`}
 `;
   return p;
 }
@@ -2076,6 +2056,7 @@ function formatDetailedCardContent(text) {
 }
 
 async function runAiEvaluation() {
+  aiRecommendations = [];
   const msgBody = document.getElementById('aiMsgBody').value.trim();
   if (!msgBody) { showToast('⚠️ 메시지 본문 필요'); return; }
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
@@ -2157,16 +2138,6 @@ async function runAiEvaluation() {
         console.warn('improvements parse fail', e); 
       } 
     }
-    if (jsonBlocks.length >= 3) { 
-      try { 
-        const parsedRecs = parseJsonRobustly(jsonBlocks[2]); 
-        if (parsedRecs && Array.isArray(parsedRecs)) { 
-          aiRecommendations = parsedRecs; 
-        } 
-      } catch (e) { 
-        console.warn('recommendations parse fail', e); 
-      } 
-    }
     document.getElementById('aiLoadingContainer').style.display = 'none';
     lastUsedModel = usedModel;
     document.getElementById('aiResultTime').textContent = new Date().toLocaleString('ko-KR') + ' · ' + usedModel;
@@ -2190,7 +2161,16 @@ async function runAiEvaluation() {
 function renderAiReportContent(rawText) {
   // Check if the response has an unclosed code block (odd number of triple backticks)
   const matches = rawText.match(/```/g);
-  const isTruncated = matches ? (matches.length % 2 !== 0) : false;
+  let isTruncated = matches ? (matches.length % 2 !== 0) : false;
+
+  // Double check to prevent false positives: if the final section is present, it completed successfully
+  if (isTruncated) {
+    const completedKeywords = ['상관관계 분석', '핵심 결론', '세부 분석'];
+    const hasFinalSection = completedKeywords.some(kw => rawText.includes(kw));
+    if (hasFinalSection) {
+      isTruncated = false; // False positive due to formatting/backtick typo
+    }
+  }
 
   let cleanText = rawText;
 
