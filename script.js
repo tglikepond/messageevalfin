@@ -395,7 +395,7 @@ function refreshResultSelector() {
     filteredCampaigns.map(c => `<option value="${c.id}">${c.name} (${c.sendDate || c.createdAt})</option>`).join('');
   
   // If previously selected campaign is in the filtered list, keep it selected. Otherwise reset.
-  if (curVal && filteredCampaigns.some(c => c.id === parseInt(curVal))) {
+  if (curVal && filteredCampaigns.some(c => String(c.id) === String(curVal))) {
     sel.value = curVal;
   } else {
     sel.value = '';
@@ -404,9 +404,9 @@ function refreshResultSelector() {
 }
 
 function loadCampaignResult() {
-  const id = parseInt(document.getElementById('resultCampaignSelect').value);
-  if (!id) return;
-  const c = loadCampaigns().find(x => x.id === id);
+  const idVal = document.getElementById('resultCampaignSelect').value;
+  if (!idVal) return;
+  const c = loadCampaigns().find(x => String(x.id) === String(idVal));
   if (!c) return;
   selectedCampaignCache = c;
 
@@ -819,10 +819,10 @@ function openModal(type) {
 function closeModal(e) { if (e && e.target !== e.currentTarget) return; document.getElementById('modalOverlay').classList.remove('show'); }
 
 async function deleteCampaign() {
-  const id = parseInt(document.getElementById('resultCampaignSelect').value);
-  if (!id) { showToast('⚠️ 삭제할 캠페인 선택'); return; }
+  const idVal = document.getElementById('resultCampaignSelect').value;
+  if (!idVal) { showToast('⚠️ 삭제할 캠페인을 먼저 선택해 주세요.'); return; }
   if (!confirm('삭제하시겠습니까?')) return;
-  await deleteCampaignFromFirestore(id);
+  await deleteCampaignFromFirestore(idVal);
   clearCampaignResult();
   refreshResultSelector();
   showToast('삭제되었습니다.');
@@ -1456,8 +1456,8 @@ function toggleFeedback(enabled) {
 
 
 function exportReport() {
-  const id = parseInt(document.getElementById('resultCampaignSelect').value); if (!id) { showToast('⚠️ 캠페인 선택'); return; }
-  const c = loadCampaigns().find(x => x.id === id); if (!c) return;
+  const idVal = document.getElementById('resultCampaignSelect').value; if (!idVal) { showToast('⚠️ 캠페인을 먼저 선택해 주세요.'); return; }
+  const c = loadCampaigns().find(x => String(x.id) === String(idVal)); if (!c) return;
   const hasAi = c.aiScores && Object.keys(c.aiScores).length > 0; const fb = c.feedback; const hasFb = fb && fb.rating > 0;
   const typeLabel = c.campaignType === 'feedback' ? '📋 피드백/결과보고' : c.campaignType === 'benefit' ? '🎁 혜택/참여활동' : c.campaignType === 'other' ? '💬 기타' : '—';
   
@@ -1517,7 +1517,18 @@ async function fetchGemini(model, contents, generationConfig = {}) {
 }
 
 function handleAiImageUpload(event) { const file = event.target.files[0]; if (!file) return; if (file.size > 10 * 1024 * 1024) { showToast('⚠️ 10MB 이하만'); return; } aiImageMimeType = file.type; const reader = new FileReader(); reader.onload = e => { aiImageBase64 = e.target.result.split(',')[1]; document.getElementById('aiPreviewImg').src = e.target.result; document.getElementById('aiUploadPlaceholder').style.display = 'none'; document.getElementById('aiPreviewContainer').style.display = 'block'; document.getElementById('aiUploadArea').classList.add('has-image'); }; reader.readAsDataURL(file); }
-function removeAiImage() { aiImageBase64 = null; aiImageMimeType = null; document.getElementById('aiFileInput').value = ''; document.getElementById('aiUploadPlaceholder').style.display = 'block'; document.getElementById('aiPreviewContainer').style.display = 'none'; document.getElementById('aiUploadArea').classList.remove('has-image'); }
+function removeAiImage() {
+  aiImageBase64 = null;
+  aiImageMimeType = null;
+  const fileInput = document.getElementById('aiFileInput');
+  if (fileInput) fileInput.value = '';
+  const placeholder = document.getElementById('aiUploadPlaceholder');
+  if (placeholder) placeholder.style.display = 'block';
+  const preview = document.getElementById('aiPreviewContainer');
+  if (preview) preview.style.display = 'none';
+  const uploadArea = document.getElementById('aiUploadArea');
+  if (uploadArea) uploadArea.classList.remove('has-image');
+}
 function initDragDrop() { const area = document.getElementById('aiUploadArea'); if (!area) return; area.addEventListener('dragover', e => { e.preventDefault(); area.style.borderColor = '#8b5cf6'; }); area.addEventListener('dragleave', () => { area.style.borderColor = ''; }); area.addEventListener('drop', e => { e.preventDefault(); area.style.borderColor = ''; const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) { const dt = new DataTransfer(); dt.items.add(f); document.getElementById('aiFileInput').files = dt.files; handleAiImageUpload({ target: { files: [f] } }); } }); }
 
 // ===== CTA Links =====
