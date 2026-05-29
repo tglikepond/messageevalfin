@@ -1895,28 +1895,32 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 \`\`\`
 
 ## 📝 상세 분석 리포트 (JSON 블록 이후 작성)
+**※ 모든 분석문은 빽빽한 줄글 형태의 긴 서술을 철저히 배제하고, 핵심만 바로 파악할 수 있도록 볼드와 기호(🎯, 🔎, 📌, 🌟)로 구획을 나누어 도식화하여 가독성을 극대화해 출력해 주세요.**
 
 ### 📈 평가 지표와 성과(오픈율·전환율) 간의 상관관계 분석
-- **오픈 요인 상관관계 (1~8단계)**: 이번 메시지의 첫 줄 후킹력, 비주얼 조화, 오프닝 맥락, 발송 요일/시간 매칭 등 수신 & 인지적 지표(1~8단계) 점수가 실제(혹은 예상) 오픈율 성과와 어떻게 긴밀하게 연동되는지 그 양의 상관관계를 구체적으로 분석해 설명하세요.
-- **전환 요인 상관관계 (9~10단계)**: 문장 완결성 및 카피라이팅 퀄리티, CTA 버튼 문구의 직관성 등 행동 유도 지표(9~10단계) 점수가 실제(혹은 예상) 클릭 전환율 성과에 미친 인과적 영향력(행동 장벽 해소 및 참여 명분 제공)을 논리적으로 연결해 제시하세요.
-- **대조군 비교 상관 추이**: 과거 우수 대조군 대비 이번 메시지의 평가 지표 등락이 실제 성과(오픈율/전환율) 변화와 어떻게 양/음의 관계를 맺고 흘러가는지 상관 분석적 관점에서 명시하세요.
-
-### 📐 정량 피처 요약 분석
-| 평가지표 | 이번 메시지 수치 | 마케팅 성과 영향 요약 |
-|---|---|---|
-| 📝 총 글자 수 | ${stats.charCount}자 | (분량 적정성 분석) |
-| 😄 이모지 개수 | ${stats.emojiCount}개 | (비주얼 밀도 분석) |
-| 🧩 개인화 변수 | ${stats.personalizationCount}개 | (개인 맞춤 수준 분석) |
-| 🎯 CTA 버튼 수 | ${ctaLinks.length}개 | (주의 산만 유무 판정) |
-
+- **오픈 요인 상관관계 (1~8단계)**
+  - 🎯 **[핵심 결론]**: (오픈율과 1~8단계 지표 간의 가장 핵심적인 인과 관계 결론 1문장)
+  - 🔎 **[세부 분석]**: (첫 줄 후킹력, 비주얼 조화, 타이밍 등 1~8단계 중 오픈율에 결정적인 영향을 미친 지표의 구체적 이유를 2문장 내외로 명확히 분석)
+- **전환 요인 상관관계 (9~10단계)**
+  - 🎯 **[핵심 결론]**: (전환율과 9~10단계 지표 간의 가장 핵심적인 인과 관계 결론 1문장)
+  - 🔎 **[세부 분석]**: (가독 구조, 문장 완결성, CTA 버튼 문구 직관성 등이 클릭 장벽을 해소하고 전환을 이끌어낸 인과적 영향을 2문장 내외로 명확히 분석)
+- **대조군 비교 상관 추이**
+  - 🎯 **[핵심 결론]**: (과거 우수 대조군 대비 이번 캠페인의 종합 성과 변화 요약 1문장)
+  - 🔎 **[세부 분석]**: (대조군들 대비 지표 점수의 상승/하락이 실제(또는 예상) 오픈율/전환율 변동과 어떻게 연동되는지 2문장 내외로 명확히 비교 분석)
 
 ### 🔍 1:1 다차원 성과 인과관계 분석 (Causal Ablation Analysis)
 ${openRate || convertRate ? `
-실제 오픈율 ${openRate}% / 전환율 ${convertRate}%의 근원적 원인을 대조군과 비교 분석합니다.
-- **오픈율 성과 요인 분석**: 발송 조건(${currentWeekday} ${sendTime}) 및 여정 1~8단계 지표 차이가 오픈에 미친 요인 분석 (대조군과 1:1 비교 포함)
-- **전환율 성과 요인 분석**: 여정 9~10단계 지표 및 CTA 구성 차이가 실제 클릭 전환율에 미친 영향 분석 (대조군과 1:1 비교 포함)
+- 🌟 **[분석 대상 대조군]**: 과거 대조군 A 및 대조군 B (과거 최고 성과 및 유사 성격 캠페인)
+- 📌 **오픈율 성과 차이 요인**
+  - **요일/시간 격차**: (요일/시간 조건 차이가 발송 대상의 수신 심리에 미친 영향을 핵심 요약형 2문장으로 비교)
+  - **수신 피처 격차**: (글자 수, 이모지 수 등 외형 피처 차이에 따른 수신 피로도 및 오픈 유도 인과관계를 2문장으로 기술)
+- 📌 **전환율 성과 차이 요인**
+  - **CTA/메시지 피처 격차**: (CTA 구성 및 여정 9~10단계 지표 완성도 차이가 클릭 전환에 미친 상세 원인을 2문장으로 비교)
 ` : `
-실측 성과 수치가 입력되지 않았습니다. 과거 누적 발송 결과와 1:1 비교를 기반으로 할 때 이번 메시지의 **예상 오픈율 범위는 XX%~XX%, 예상 전환율 범위는 XX%~XX%**로 예측 시뮬레이션됩니다. 그 이유와 함께 예측의 근거를 기술하세요.
+- 🌟 **[분석 대상 대조군]**: 과거 대조군 A 및 대조군 B (과거 최고 성과 및 유사 성격 캠페인)
+- 📌 **예상 성과 시뮬레이션**
+  - **예상 오픈율 범위**: **XX% ~ XX%** (그 근거를 대조군 발송 환경 및 여정 1~8단계 점수 비교를 기반으로 2문장 기술)
+  - **예상 전환율 범위**: **XX% ~ XX%** (그 근거를 대조군 CTA 및 여정 9~10단계 점수 비교를 기반으로 2문장 기술)
 `}
 `;
   return p;
@@ -2324,15 +2328,11 @@ function renderAiScoreGrid() {
   document.getElementById('aiScoreGrid').innerHTML = aiEvalItems.map(item => {
     const s = aiScores[item.id] || 5;
     const color = s >= 8 ? 'var(--accent-emerald)' : s >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';
-    const improvement = aiImprovements[item.id] || item.rec;
-    return `<div class="ai-score-item" style="flex-direction:column;align-items:stretch;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div class="score-num" style="color:${color}">${s}</div>
-        <div class="score-info"><div class="score-name">${item.icon} ${item.title}</div>
-          <div class="score-bar"><div class="score-bar-fill" style="width:${s * 10}%;background:${color};"></div></div>
-        </div>
+    return `<div class="ai-score-item">
+      <div class="score-num" style="color:${color}">${s}</div>
+      <div class="score-info"><div class="score-name">${item.icon} ${item.title}</div>
+        <div class="score-bar"><div class="score-bar-fill" style="width:${s * 10}%;background:${color};"></div></div>
       </div>
-      <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;padding-left:48px;line-height:1.5;">💡 ${improvement}</div>
     </div>`;
   }).join('') + `<div class="ai-score-item" style="border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.06);"><div class="score-num" style="font-size:28px;color:var(--accent-purple);">${aiPct}</div><div class="score-info"><div class="score-name" style="font-size:14px;font-weight:700;">종합 /100</div></div></div>`;
 }
