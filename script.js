@@ -28,16 +28,16 @@ const aiEvalItems = [
     tip: '마감 시한, 희소성 자극, 실시간 아동 상황 등으로 즉시 열람 유도', rec: '메시지에 마감 시간(예: 오늘 밤 12시 마감)이나 즉시 확인해야 할 실시간 명분을 추가해 보세요.'
   },
   {
-    id: 'fatigue_control', title: '피로도 제어 및 광고감 통제', category: '본문 신뢰', icon: '🛡️',
-    tip: '과장된 광고 멘트, 특수기호/느낌표 남발 억제 및 브랜드 신뢰 유지', rec: '과도한 문장부호(!!!)나 쇼핑/광고성 어휘를 줄여 브랜드 품격과 신뢰도를 지켜주세요.'
+    id: 'cognitive_readability', title: '인지 명확성 및 가독 구조', category: '본문 탐독', icon: '👁️',
+    tip: '쉬운 어휘와 짧은 단문 위주 구성, 핵심 정보가 직관적으로 배치된 구조', rec: '만연체 문장을 줄이고 단락 구분 및 줄바꿈을 활용하여 한눈에 핵심 정보가 들어오도록 구조화하세요.'
   },
   {
     id: 'value_pre_exposure', title: '혜택 가치 사전 노출도', category: '본문 신뢰', icon: '🎁',
     tip: '상세 링크 클릭 전 본문에서 명확한 정서적 보람/수혜 결과 사전 요약', rec: '링크 클릭 전에 알림톡 본문 내에서 고객이 누릴 보람이나 혜택 요약본을 미리 일부 노출하세요.'
   },
   {
-    id: 'cta_architecture', title: '단일 목적 집중도', category: '최종 액션', icon: '🎯',
-    tip: '주의 분산 방지를 위한 클릭 유도 버튼(CTA) 1개 중심 설계', rec: '메시지 본문의 링크나 버튼 개수를 단 1개로 집중하여 선택 장애를 최소화하세요.'
+    id: 'copywriting_quality', title: '문장 완결성 및 표현 퀄리티', category: '최종 액션', icon: '✍️',
+    tip: '자연스러운 문맥 흐름, 비문/오탈자 없음, 감정적 호소와 정보의 균형', rec: '스토리텔링의 전개를 유기적으로 흐르도록 매끄럽게 다듬고, 맞춤법과 올바른 주술 호응 문장으로 격조를 높이세요.'
   },
   {
     id: 'cta_actionability', title: 'CTA 액션 문구 직관성', category: '최종 액션', icon: '🔗',
@@ -55,11 +55,11 @@ function calculateTpi(scores) {
     'opening_conciseness', 
     'timing_optimization', 
     'urgency_trigger', 
-    'fatigue_control', 
+    'cognitive_readability', 
     'value_pre_exposure'
   ];
   const convertIds = [
-    'cta_architecture', 
+    'copywriting_quality', 
     'cta_actionability'
   ];
   
@@ -83,11 +83,6 @@ function calculateTpi(scores) {
   
   let tpi = (openIndex * 8) + (convertIndex * 2);
   tpi = Math.round(tpi * 10) / 10;
-  
-  const fatigueScore = scores['fatigue_control'];
-  if (typeof fatigueScore === 'number' && fatigueScore <= 4) {
-    tpi = tpi * 0.9;
-  }
   
   return Math.round(Math.max(0, Math.min(100, tpi)));
 }
@@ -431,8 +426,8 @@ function loadCampaignResult() {
   else { totalPct = 0; breakdown = '아직 평가되지 않음'; }
 
   // Concentric Neon SVG Rings Stroke animation
-  const openIds = ['first_line_attraction', 'visual_emoji_harmony', 'personalization_density', 'opening_conciseness', 'timing_optimization', 'urgency_trigger', 'fatigue_control', 'value_pre_exposure'];
-  const convertIds = ['cta_architecture', 'cta_actionability'];
+  const openIds = ['first_line_attraction', 'visual_emoji_harmony', 'personalization_density', 'opening_conciseness', 'timing_optimization', 'urgency_trigger', 'cognitive_readability', 'value_pre_exposure'];
+  const convertIds = ['copywriting_quality', 'cta_actionability'];
   
   let openSum = 0, openCount = 0;
   openIds.forEach(fid => { if (typeof c.aiScores[fid] === 'number') { openSum += c.aiScores[fid]; openCount++; } });
@@ -462,12 +457,7 @@ function loadCampaignResult() {
   document.getElementById('scoreNum').textContent = totalPct;
   document.getElementById('scoreGrade').textContent = totalPct >= 75 ? '🏆 우수' : totalPct >= 50 ? '📈 보통' : totalPct > 0 ? '⚠️ 개선 필요' : '—';
   
-  let fatigueAlert = '';
-  if (hasAi && typeof c.aiScores['fatigue_control'] === 'number' && c.aiScores['fatigue_control'] <= 4) {
-    fatigueAlert = ` <span style="color:var(--accent-rose);font-weight:700;">(⚠️ 피로도 통제 초과 10% 페널티 적용됨)</span>`;
-  }
-  
-  document.getElementById('scoreComment').innerHTML = (totalPct >= 75 ? '매우 우수한 캠페인입니다!' : totalPct >= 50 ? '양호하나 일부 개선이 필요합니다.' : totalPct > 0 ? '여러 항목에서 개선이 필요합니다.' : 'AI 분석을 실행해 주세요.') + fatigueAlert + `<br><span style="font-size:12px;color:var(--text-muted);">가중치: ${breakdown}</span>`;
+  document.getElementById('scoreComment').innerHTML = (totalPct >= 75 ? '매우 우수한 캠페인입니다!' : totalPct >= 50 ? '양호하나 일부 개선이 필요합니다.' : totalPct > 0 ? '여러 항목에서 개선이 필요합니다.' : 'AI 분석을 실행해 주세요.') + `<br><span style="font-size:12px;color:var(--text-muted);">가중치: ${breakdown}</span>`;
   
   document.getElementById('scoreNumTpi').textContent = totalPct + '점';
   document.getElementById('scoreNumOpen').textContent = openIndex.toFixed(1) + '점/10';
@@ -1865,20 +1855,20 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 - 시간적 마감선이나 긴박감이 전혀 없어 "나중에 봐야지" 하고 지나치게 방치되는 정적인 문구인 경우 **3~5점** 감점.
 - "오늘 밤 12시 마감", "🚨 현재 대기 중인 아동을 위한 긴급 소식" 등 시간/대상 한정성 및 즉시성 명분이 유려하게 가미된 경우 **8~10점**.
 
-### 07. 피로도 제어 및 광고감 통제 (fatigue_control)
-- 브랜드 신뢰감 유지 평가 (역채점 방식).
-- "!!!", "초특가", "대박 혜택" 등 쇼핑/광고 스팸성 어휘나 지나치게 강요하는 느낌표가 가득할수록 **2~4점** 엄격 감점.
-- 정직하고 차분한 어조를 유지하며 팩트 기반 데이터와 후원 아동의 이야기를 품격 있게 전달하여 피로를 최소화한 경우 **8~10점**.
+### 07. 인지 명확성 및 가독 구조 (cognitive_readability)
+- 정보 인지 속도와 줄바꿈/가독 배치 평가.
+- 한눈에 이해하기 쉬운 쉬운 어휘와 짧은 단문 위주로 작성되어 있으며, 텍스트 가독성 배치가 우수하면 **8~10점**.
+- 만연체 문장으로 너무 길게 늘어지거나 단락 구분 없이 뭉쳐 있어서 한눈에 파악하기 어렵고 전문 용어를 오용할 때 **3~5점** 감점.
 
 ### 08. 혜택 가치 사전 노출도 (value_pre_exposure)
 - 클릭 유도를 위한 보상 선제 노출도 평가.
 - "자세한 내용은 아래 링크에서 보세요"라며 가치를 숨긴 채 클릭만 낚시성으로 유도하면 **2~4점** 감점.
 - 링크 클릭 전에 알림톡 본문 자체에서 후원자로서 얻는 자부심, 감동, 감사 편지 일부, 성과 요약 등을 매력적인 가치 단어로 선행 노출한 경우 **8~10점**.
 
-### 09. 단일 목적 집중도 (cta_architecture)
-- 인지 과부하 방지 평가.
-- "후원하기", "공지사항 보기", "유튜브 구독" 등 서로 다른 동선의 링크가 산만하게 다중으로 흩어져 있으면 **1~4점** 감점.
-- 최종 유도 목적지가 단 1개의 주력 CTA 버튼으로 깔끔하게 집약되어 집중감을 제공하면 **9~10점** 만점.
+### 09. 문장 완결성 및 카피라이팅 퀄리티 (copywriting_quality)
+- 스토리 유기성 및 문장 구조의 올바름 평가.
+- 메시지의 논리적 연동이 자연스럽고 후원 아동의 이야기와 팩트 전달의 균형이 뛰어나며 비문/오탈자가 없을 때 **8~10점**.
+- 주술 호응이 안 맞아 비문이 발견되거나, 앞뒤 맥락이 급격히 튀고 지나치게 어색한 기계적 어투가 사용되어 신뢰감을 떨어뜨릴 때 **3~5점** 감점.
 
 ### 10. CTA 액션 문구 직관성 (cta_actionability)
 - 행동 지향적 버튼 텍스트의 직관성 평가.
@@ -1891,12 +1881,12 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 
 **첫 번째 JSON 블록** - 10개 항목의 정밀 채점 점수 (1~10점 사이의 정수):
 \`\`\`json
-{"first_line_attraction":7,"visual_emoji_harmony":6,"personalization_density":8,"opening_conciseness":5,"timing_optimization":6,"urgency_trigger":7,"fatigue_control":10,"value_pre_exposure":8,"cta_architecture":7,"cta_actionability":5}
+{"first_line_attraction":7,"visual_emoji_harmony":6,"personalization_density":8,"opening_conciseness":5,"timing_optimization":6,"urgency_trigger":7,"cognitive_readability":10,"value_pre_exposure":8,"copywriting_quality":7,"cta_actionability":5}
 \`\`\`
 
 **두 번째 JSON 블록** - 각 지표별 **메시지 원문 인용 첨삭이 포함된 구체적 개선안** (일반론 배제, 수정 텍스트가 명확해야 함):
 \`\`\`json
-{"first_line_attraction":"개선안","visual_emoji_harmony":"개선안","personalization_density":"개선안","opening_conciseness":"개선안","timing_optimization":"개선안","urgency_trigger":"개선안","fatigue_control":"개선안","value_pre_exposure":"개선안","cta_architecture":"개선안","cta_actionability":"개선안"}
+{"first_line_attraction":"개선안","visual_emoji_harmony":"개선안","personalization_density":"개선안","opening_conciseness":"개선안","timing_optimization":"개선안","urgency_trigger":"개선안","cognitive_readability":"개선안","value_pre_exposure":"개선안","copywriting_quality":"개선안","cta_actionability":"개선안"}
 \`\`\`
 
 **세 번째 JSON 블록** - 즉시 실행해야 하는 우선순위별 종합 개선 액션 가이드 (3~5개):
@@ -1924,9 +1914,9 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 4. **오프닝 맥락 간결성**: _점/10
 5. **요일/시간 타이밍 매칭**: _점/10
 6. **긴급성 및 즉각적 유도**: _점/10
-7. **피로도 제어 및 광고감 통제**: _점/10
+7. **인지 명확성 및 가독 구조**: _점/10
 8. **혜택 가치 사전 노출도**: _점/10
-9. **단일 목적 집중도**: _점/10
+9. **문장 완결성 및 카피라이팅 퀄리티**: _점/10
 10. **CTA 액션 문구 직관성**: _점/10
 
 ### 🔍 1:1 다차원 성과 인과관계 분석 (Causal Ablation Analysis)
