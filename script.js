@@ -356,7 +356,6 @@ function clearCampaignResult() {
   document.getElementById('aiResultSection').style.display = 'none';
   document.getElementById('aiScoreSummary').style.display = 'none';
   document.getElementById('aiResultCard').style.display = 'none';
-  document.getElementById('launchingChecklistSection').style.display = 'none';
 }
 
 function refreshResultSelector() {
@@ -726,34 +725,7 @@ function loadCampaignResult() {
     }
   }
 
-  // To-Do Launching Checklist
-  const todoContainer = document.getElementById('launchingTodoContainer');
-  if (todoContainer) {
-    document.getElementById('launchingChecklistSection').style.display = 'block';
-    const lowItemsForTodo = allItems.filter(it => it.bestScore <= 6);
-    if (lowItemsForTodo.length > 0) {
-      todoContainer.innerHTML = lowItemsForTodo.map((it, idx) => `
-        <label style="display:flex;align-items:start;gap:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);padding:14px;border-radius:8px;cursor:pointer;transition:background 0.2s;margin-bottom:8px;">
-          <input type="checkbox" style="margin-top:3px;accent-color:var(--accent-emerald);width:16px;height:16px;" id="launchTodoCheck_${idx}">
-          <div style="flex:1;">
-            <div style="font-weight:700;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
-              ${it.icon} ${it.title} <span class="score-badge low" style="font-size:10px;padding:2px 6px;">${it.bestScore}점</span>
-            </div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;line-height:1.5;">
-              ❌ <strong>취약 요인:</strong> ${it.tip}<br>
-              💡 <strong>AI 액션 플랜:</strong> <span style="color:var(--accent-purple);font-weight:600;">${it.aiRec}</span>
-            </div>
-          </div>
-        </label>
-      `).join('');
-    } else {
-      todoContainer.innerHTML = `
-        <div style="text-align:center;padding:24px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:8px;color:var(--accent-emerald);font-size:13px;font-weight:700;">
-          🎉 10개 여정 지표가 모두 안정권(7점 이상)입니다! 즉시 런칭을 승인합니다. 🚀
-        </div>
-      `;
-    }
-  }
+
 }
 
 // ===== Modal =====
