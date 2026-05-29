@@ -2199,11 +2199,9 @@ async function runAiEvaluation() {
 }
 
 function renderAiReportContent(rawText) {
-  // Check if the response ends with an unclosed code block or has been truncated
-  let isTruncated = false;
-  if (/```[\w]*\s*\n?[^`]*$/.test(rawText)) {
-    isTruncated = true;
-  }
+  // Check if the response has an unclosed code block (odd number of triple backticks)
+  const matches = rawText.match(/```/g);
+  const isTruncated = matches ? (matches.length % 2 !== 0) : false;
 
   let cleanText = rawText;
 
