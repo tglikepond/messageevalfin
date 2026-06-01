@@ -581,7 +581,7 @@ function loadCampaignResult() {
   const aiImps = c.aiImprovements || {};
 
   // 1:1 Side-by-side Feature Contrast Matrix
-  const pastCampaigns = loadCampaigns().filter(camp => camp.aiScores && Object.keys(camp.aiScores).length > 0 && camp.id !== id);
+  const pastCampaigns = loadCampaigns().filter(camp => camp.aiScores && Object.keys(camp.aiScores).length > 0 && String(camp.id) !== String(idVal));
   let bestCampaign = null;
   let similarCampaign = null;
   if (pastCampaigns.length > 0) {
@@ -654,7 +654,7 @@ function loadCampaignResult() {
       // Constrain position between 4% and 96%
       const xPct = 4 + (oIdx / 10) * 92;
       const yPct = 4 + (cIdx / 10) * 92;
-      const isCurrent = camp.id === id;
+      const isCurrent = String(camp.id) === String(idVal);
 
       const dot = document.createElement('div');
       dot.style.position = 'absolute';
