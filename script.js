@@ -1677,6 +1677,21 @@ function buildAiPrompt() {
     ctaLinks
   };
 
+  const urgencyPrompt = campaignType === 'feedback'
+    ? `- '피드백/결과보고' 유형의 메시지이므로, 마케팅 호객용의 무리한 긴급성(마감 시간)을 강요하지 않습니다. 대신 **'후원자 감동/감사 및 정서적 보람 표현의 깊이, 변화 수혜 결과 보고의 충실함'**을 기준으로 점수를 측정하고 피드백을 주십시오.`
+    : `- 즉각적인 상세보기 행동 촉구력 평가. 시간적 마감선이나 긴박감이 전혀 없어 "나중에 봐야지" 하고 지나치게 방치되는 정적인 문구인 경우 **3~5점** 감점. "오늘 밤 12시 마감", "🚨 현재 대기 중인 아동을 위한 긴급 소식" 등 시간/대상 한정성 및 즉시성 명분이 유려하게 가미된 경우 **8~10점**.`;
+
+  const timingPrompt = `### 05. 요일/시간 타이밍 매칭 (timing_optimization)
+- 메시지 성격과 라이프사이클 궁합 평가.
+- **중요 Fallback 룰**: 이번 캠페인 정보에 발송일시나 발송요일이 미입력되었거나 누락된 상태인 경우, AI는 절대로 임의 감점을 하지 말고 **기본 6점**을 부여한 뒤, 권장 발송 요일/시간대에 대해 설명해 주십시오.
+- 감성/기부 후기: 주중 밤이나 여유로운 목/금 저녁 발송 시 **9~10점**, 바쁜 월/화 아침 발송 시 **3~5점** 감점.
+- 혜택/참여 안내: 주중 화~목 오전 10-11시 또는 오후 14-16시 발송 시 **9~10점**, 심야(22시 이후) 발송 시 **1~2점** 패널티.`;
+
+  const personalizationPrompt = `### 03. 개인화 정밀성 & 밀도 (personalization_density)
+- 동적 치환 변수의 자연스러운 결합도 평가.
+- 개인화 요소가 전무하거나 기계적 타이틀에만 구색용으로 쓰인 경우 **1~4점** 감점.
+- 메시지 첫 머리(호칭)와 본문 핵심 맥락 내에 최소 2개 이상의 고객 변수("OOO 후원자님", "[후원일자]", 또는 "OO", "OOO" 같은 마스킹 형태의 이름 치환 변수 표기)가 유기적으로 녹아들어 진심 어린 손편지 느낌을 주면 **8~10점**.`;
+
   // 2. 과거 캠페인 데이터 분석 및 대조군 매칭
   const pastCampaigns = loadCampaigns().filter(c => c.aiScores && Object.keys(c.aiScores).length > 0);
   let historySection = '';
@@ -1805,25 +1820,19 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 - 텍스트로만 가득해 시각적 쉼표가 전혀 없는 무미건조한 줄글 상태이면 **4~5점** 감점.
 - 텍스트 100자당 1~2개 비율로, 첫 머리와 문단 핵심 앵커 포인트에 이모지가 우아하게 배치된 경우 **9~10점**.
 
-### 03. 개인화 정밀성 & 밀도 (personalization_density)
-- 동적 치환 변수의 자연스러운 결합도 평가.
-- 개인화 요소가 전무하거나 기계적 타이틀에만 구색용으로 쓰인 경우 **1~4점** 감점.
-- 메시지 첫 머리(호칭)와 본문 핵심 맥락 내에 최소 2개 이상의 고객 변수("OOO 후원자님", "[후원일자]")가 유기적으로 녹아들어 진심 어린 손편지 느낌을 주면 **8~10점**.
+
+${personalizationPrompt}
 
 ### 04. 오프닝 맥락 간결성 (opening_conciseness)
 - 본론 직행 속도 평가.
 - "날씨가 많이 추워졌네요..." 등의 상투적인 계절 안부나 장황한 서두로 본론 진입을 3줄 이상 지연시키면 **3~5점** 감점.
 - 첫 1~2문장 내에 메시지 발송 목적과 가치 요약("후원자님의 기부금이 아동에게 전달되어 나타난 변화를 보고해 드립니다")을 두괄식으로 간결하게 타격한 경우 **8~10점**.
 
-### 05. 요일/시간 타이밍 매칭 (timing_optimization)
-- 메시지 성격과 라이프사이클 궁합 평가.
-- 감성/기부 후기: 주중 밤이나 여유로운 목/금 저녁 발송 시 **9~10점**, 바쁜 월/화 아침 발송 시 **3~5점** 감점.
-- 혜택/참여 안내: 주중 화~목 오전 10-11시 또는 오후 14-16시 발송 시 **9~10점**, 심야(22시 이후) 발송 시 **1~2점** 패널티.
+${timingPrompt}
 
 ### 06. 긴급성 및 즉각적 유도 (urgency_trigger)
-- 즉각적인 상세보기 행동 촉구력 평가.
-- 시간적 마감선이나 긴박감이 전혀 없어 "나중에 봐야지" 하고 지나치게 방치되는 정적인 문구인 경우 **3~5점** 감점.
-- "오늘 밤 12시 마감", "🚨 현재 대기 중인 아동을 위한 긴급 소식" 등 시간/대상 한정성 및 즉시성 명분이 유려하게 가미된 경우 **8~10점**.
+${urgencyPrompt}
+
 
 ### 07. 인지 명확성 및 가독 구조 (cognitive_readability)
 - 정보 인지 속도와 줄바꿈/가독 배치 평가.
@@ -1854,9 +1863,50 @@ ${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열�
 {"first_line_attraction":7,"visual_emoji_harmony":6,"personalization_density":8,"opening_conciseness":5,"timing_optimization":6,"urgency_trigger":7,"cognitive_readability":10,"value_pre_exposure":8,"copywriting_quality":7,"cta_actionability":5}
 \`\`\`
 
-**두 번째 JSON 블록** - 각 지표별 **메시지 원문 인용 첨삭이 포함된 구체적 개선안** (일반론 배제, 수정 텍스트가 명확해야 함):
+**두 번째 JSON 블록** - 각 지표별 **평가 근거와 메시지 원문 인용 첨삭이 포함된 구체적 개선안**을 아래와 같은 중첩 JSON 구조로 반드시 생성해 주세요:
 \`\`\`json
-{"first_line_attraction":"개선안","visual_emoji_harmony":"개선안","personalization_density":"개선안","opening_conciseness":"개선안","timing_optimization":"개선안","urgency_trigger":"개선안","cognitive_readability":"개선안","value_pre_exposure":"개선안","copywriting_quality":"개선안","cta_actionability":"개선안"}
+{
+  "first_line_attraction": {
+    "reason": "평가 근거 및 원문 인용 첨삭 내용",
+    "improvement": "즉시 복사/발송 가능한 완성도 높은 개선 문구"
+  },
+  "visual_emoji_harmony": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "personalization_density": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "opening_conciseness": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "timing_optimization": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "urgency_trigger": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "cognitive_readability": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "value_pre_exposure": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "copywriting_quality": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  },
+  "cta_actionability": {
+    "reason": "평가 근거",
+    "improvement": "개선안"
+  }
+}
 \`\`\`
 
 ## 📝 상세 분석 리포트 (JSON 블록 이후 작성)
@@ -2122,7 +2172,16 @@ async function runAiEvaluation() {
         if (parsedImps) {
           aiImprovements = {}; 
           aiEvalItems.forEach(item => { 
-            if (parsedImps[item.id]) aiImprovements[item.id] = parsedImps[item.id]; 
+            const val = parsedImps[item.id];
+            if (val) {
+              if (typeof val === 'object' && val !== null) {
+                // 중첩 JSON 구조인 경우 조립
+                aiImprovements[item.id] = `**[평가 근거]** ${val.reason || ''}\n\n**[개선 카피]** ${val.improvement || ''}`;
+              } else {
+                // 기존 단층 문자열 구조인 경우 호환성 보존
+                aiImprovements[item.id] = String(val);
+              }
+            }
           }); 
         }
       } catch (e) { 
