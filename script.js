@@ -2055,7 +2055,13 @@ async function runAiEvaluation() {
     for (const model of models) {
       try {
         document.getElementById('aiLoadingText').textContent = `${model} 모델로 분석 중...`;
-        const res = await fetchGemini(model, [{ parts }], { temperature: 0.7, maxOutputTokens: 8192 });
+        const res = await fetchGemini(model, [{ parts }], {
+          temperature: 0.7,
+          maxOutputTokens: 8192,
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
+        });
         if (res.ok) { 
           const data = await res.json(); 
           text = data.candidates?.[0]?.content?.parts?.[0]?.text; 
@@ -2644,7 +2650,10 @@ async function generateMessage() {
           { 
             temperature: 0.9, 
             maxOutputTokens: 4096,
-            responseMimeType: "application/json"
+            responseMimeType: "application/json",
+            thinkingConfig: {
+              thinkingBudget: 0
+            }
           }
         );
         if (res.ok) {

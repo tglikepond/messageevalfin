@@ -36,7 +36,14 @@ export default async function handler(request, response) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents,
-        generationConfig: generationConfig || { temperature: 0.7, maxOutputTokens: 8192 }
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 8192,
+          ...generationConfig,
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
+        }
       })
     });
 
