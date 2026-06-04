@@ -1,5 +1,5 @@
 // ===== Firebase Imports =====
-import { db, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy } from './firebase-config.js';
+import { db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy } from './firebase-config.js';
 
 // ===== 10 AI Evaluation Items (Full Analysis) =====
 const aiEvalItems = [
@@ -139,6 +139,7 @@ let currentCampaignId = null;
 let aiImageBase64 = null;
 let aiImageMimeType = null;
 let selectedCampaignCache = null;
+let lastUsedCampaignIsTruncated = false;
 let lastGeneratedPrompt = `============================================================
 💚 초록우산 AI 알림톡 문안 생성기 시스템 지침 명세서 (System Prompt Spec)
 ============================================================
@@ -152,22 +153,21 @@ let lastGeneratedPrompt = `=====================================================
 - 2단계: 실제 내용 및 제안 (사용자 제공 성과 수치, 통계, 혜택 일정 기술)
 - 3단계: 행동 촉구 (메시지 테마에 맞춰 고도화된 타겟 유도 문구 구성)
 
-[3] 서비스 종류별 3대 특화 유형 정의
+[3] 서비스 종류별 특화 유형 정의
 ------------------------------------------------------------
-■ 서비스 종류 A: 피드백 / 결과보고 (지원 현황 및 성과 안내)
+■ 서비스 종류 A: 피드백 / 결과보고 (지원 현황 및 성과 안내) — 2가지 유형
 - [유형 1] 정보제공중심형: 객관적 수치(XX명, XX%) 강조, 지어낸 숫자는 XX 마스킹 처리
 - [유형 2] 감정터치중심형: 수혜 아동의 순수한 편지글/한마디 직접 인용구('...') 및 스토리텔링
-- [유형 3] 행동강조중심형: 아동 변화를 보여주며 테마 밀착형 행동 유도(CTA) 강조
 
-■ 서비스 종류 B: 혜택 / 참여활동 (문화 혜택 및 활동 신청 안내)
+■ 서비스 종류 B: 혜택 / 참여활동 (문화 혜택 및 활동 신청 안내) — 3가지 유형
 - [유형 1] 희소성강조형: 마감 임박 상태, 한정 수량, 🚨 경고 이모지 활용으로 긴급성 부여
 - [유형 2] 우대프라이빗형: 명예로운 혜택/VIP 전용 초청 톤, 품격 있는 감사와 우대
 - [유형 3] 화제가치강조형: 트렌드, SNS 화제성, 독창적 요소를 자극하는 호기심 유발 질문
 ------------------------------------------------------------
 
 [4] 글자 수 준수 규칙
-- 단문(short): 공백 포함 140자 이상 ~ 200자 이하의 조밀한 전개
-- 장문(long): 공백 포함 210자 이상 ~ 400자 이하의 구체적이고 풍부한 감동 전달
+- 단문(short): 공백 포함 120자 내외 (100자~140자 범위)
+- 장문(long): 공백 포함 200자 내외 (180자~220자 범위)
 
 [5] JSON 무결성 및 인용 따옴표 예외 지침
 - 데이터의 안정적 수신을 위해 'application/json' 구조로 출력 강제
@@ -215,7 +215,7 @@ function initRateCalculators() {
 }
 
 // ===== Init =====
-function initAll() {
+async function initAll() {
   initTabs();
   initFeedbackStars();
   initDragDrop();
@@ -293,7 +293,10 @@ async function saveCampaignData() {
     aiScores: { ...aiScores },
     aiImprovements: { ...aiImprovements },
     aiRecommendations: [...aiRecommendations],
-    aiReport: document.getElementById('aiResultContent')?.innerHTML || '',
+    aiReport: (document.getElementById('aiResultContent')?.innerHTML || '')
+      .replace(/<div class="ai-warning-box"[\s\S]*?<\/div>/g, '')
+      .trim(),
+    isTruncated: lastUsedCampaignIsTruncated || false,
     aiModel: lastUsedModel || '',
     feedback: feedbackEnabled ? {
       rating: feedbackRating,
@@ -496,8 +499,21 @@ function loadCampaignResult() {
     aiImprovements = c.aiImprovements || {};
     renderAiScoreGrid();
 
-    // Restore report HTML
-    document.getElementById('aiResultContent').innerHTML = c.aiReport || '';
+    // Sync global truncation state
+    lastUsedCampaignIsTruncated = c.isTruncated || false;
+
+    // Restore report HTML & clean any legacy embedded warning boxes
+    let cleanReport = (c.aiReport || '')
+      .replace(/<div class="ai-warning-box"[\s\S]*?<\/div>/g, '')
+      .trim();
+
+    if (c.isTruncated) {
+      cleanReport = `<div class="ai-warning-box" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);padding:14px;border-radius:8px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.15);">
+          <strong style="color:var(--accent-rose);font-size:13.5px;">⚠️ 생성 용량 한계로 인해 AI 상세 리포트가 중간에 요약 또는 생략되었습니다.</strong><br>
+          상단의 상세 여정 카드 정보를 참고해 주세요.
+        </div>` + cleanReport;
+    }
+    document.getElementById('aiResultContent').innerHTML = cleanReport;
   } else {
     document.getElementById('resultAiSummary').innerHTML = '<span style="color:var(--text-muted)">AI 평가 미실행</span>';
     document.getElementById('aiResultSection').style.display = 'none';
@@ -629,7 +645,17 @@ function loadCampaignResult() {
     }).join('');
     document.getElementById('featureComparisonBody').innerHTML = tableHtml;
   } else {
-    document.getElementById('featureSimulatorSection').style.display = 'none';
+    document.getElementById('featureSimulatorSection').style.display = 'block';
+    document.getElementById('featureComparisonBody').innerHTML = `
+      <tr>
+        <td colspan="4" style="padding:40px;color:var(--text-muted);font-size:13px;text-align:center;border-bottom:none;">
+          📊 대조 분석을 수행할 과거 캠페인 데이터가 부족합니다.<br>
+          <span style="font-size:11px;margin-top:6px;display:inline-block;color:rgba(255,255,255,0.35);">
+            (현재 캠페인 외에 최소 1건 이상의 평가 완료된 과거 캠페인이 존재하면 대조군이 자동으로 노출됩니다.)
+          </span>
+        </td>
+      </tr>
+    `;
   }
 
   // 2D Positioning Matrix Board
@@ -688,18 +714,18 @@ function loadCampaignResult() {
 
     const insightEl = document.getElementById('quadrantInsightCard');
     if (insightEl) {
-      if (openIndex >= 7.5 && convertIndex >= 7.5) {
+      if (openIndex >= 5.0 && convertIndex >= 5.0) {
         insightEl.innerHTML = `<strong style="color:var(--accent-purple);">🌟 스타 (CRM Star) 영역 포지셔닝 완료</strong><br>
           이번 캠페인은 높은 오프닝 후킹력과 최적의 CTA 설계가 양립된 최정상급 메시지입니다. A/B 테스트 시 본문의 사소한 타이밍 변수만 추가 조정하며 성과를 고도화하세요.`;
-      } else if (openIndex >= 7.5 && convertIndex < 7.5) {
+      } else if (openIndex >= 5.0 && convertIndex < 5.0) {
         insightEl.innerHTML = `<strong style="color:var(--accent-blue);">📬 트래픽 캐쳐 (Traffic Catcher) 영역 포지셔닝 완료</strong><br>
           첫 줄 후킹과 타이밍 최적화로 많은 후원자의 관심을 끄는 데는 성공할 것으로 보이나, CTA 설계(${convertIndex.toFixed(1)}점)가 취약합니다. <strong>CTA 버튼의 직관성을 보완</strong>하여 클릭 전환 이탈률을 방지하세요.`;
-      } else if (openIndex < 7.5 && convertIndex >= 7.5) {
+      } else if (openIndex < 5.0 && convertIndex >= 5.0) {
         insightEl.innerHTML = `<strong style="color:var(--accent-emerald);">🎯 클로저 (Closer) 영역 포지셔닝 완료</strong><br>
           CTA 설계 및 가치 집중도가 매끄러워 메시지를 읽은 고객의 전환 효율은 높을 것으로 보이나, 오프닝 프리뷰(${openIndex.toFixed(1)}점)가 따분합니다. <strong>첫 줄에 호기심 질문이나 파격적인 수치</strong>를 명시하여 오프닝 레이트를 수혈하세요.`;
       } else {
         insightEl.innerHTML = `<strong style="color:var(--accent-rose);">⚠️ 리빌딩 대상 (Rebuilding Target) 영역 포지셔닝 완료</strong><br>
-          오프닝 후킹력과 CTA 전환 설계가 모두 평균(7.5점) 미만으로 리빌딩이 권장되는 슬럼프 상태입니다. <strong>초록우산 AI 문안 생성기</strong> 탭을 활용해 최적화된 시안을 즉시 보충 수수해 보세요.`;
+          오프닝 후킹력과 CTA 전환 설계가 모두 평균(5.0점) 미만으로 리빌딩이 권장되는 슬럼프 상태입니다. <strong>초록우산 AI 문안 생성기</strong> 탭을 활용해 최적화된 시안을 즉시 보충 생성해 보세요.`;
       }
     }
   }
@@ -796,6 +822,130 @@ function openModal(type) {
 }
 
 function closeModal(e) { if (e && e.target !== e.currentTarget) return; document.getElementById('modalOverlay').classList.remove('show'); }
+
+function openPromptModal() {
+  const overlay = document.getElementById('modalOverlay');
+  const title = document.getElementById('modalTitle');
+  const body = document.getElementById('modalBody');
+
+  title.textContent = 'ℹ️ 적용된 AI 메시지 생성 프롬프트 명세';
+  
+  body.innerHTML = `
+    <div style="font-size:13.5px; line-height:1.7; color:var(--text-secondary);">
+      <p style="margin-bottom:12px; font-weight:600; color:var(--text-primary);">
+        초록우산 AI 메시지 생성기에는 아래와 같이 정밀 설계된 카피라이팅 시스템 프롬프트가 내장되어 작동하고 있습니다.
+      </p>
+      
+      <div style="margin-bottom:16px; padding:12px; background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.12); border-radius:8px;">
+        <span style="color:var(--accent-purple); font-weight:700;">💡 핵심 프롬프트 설계 특징:</span>
+        <ul style="margin-top:6px; margin-left:20px; font-size:12.5px;">
+          <li><strong>3단계 구조 강제</strong>: 모든 문안은 [1) 오프닝 - 2) 실제 내용 및 제안 - 3) 행동 촉구]의 3단 구조를 엄격히 준수합니다.</li>
+          <li><strong>글자 수 조건 자동 이원화</strong>: 단문(120자 내외), 장문(200자 내외) 조건을 동적으로 감지하여 생성합니다.</li>
+          <li><strong>수치 마스킹 룰 적용</strong>: 입력되지 않은 사실이나 숫자를 AI가 지어내는 경우 강제로 <code>**XX**</code> 처리하여 발송 실수를 원천 방지합니다.</li>
+          <li><strong>오픈율 1위 성공 공식 반영</strong>: 저장된 캠페인 중 가장 성과가 높은 우수사례의 패턴(길이, 톤, 이모지 비율)을 분석하여 스타일 전이(Style Transfer)를 수행합니다.</li>
+        </ul>
+      </div>
+
+      <h4 style="margin-bottom:8px; color:var(--text-primary); font-size:14px; border-bottom:1px solid var(--border-glass); padding-bottom:6px;">📄 시스템 프롬프트 전문 (가이드라인)</h4>
+      <div style="max-height:400px; overflow-y:auto; padding:16px; background:rgba(15,23,42,0.6); border-radius:8px; border:1px solid var(--border-glass); font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all; color:var(--text-secondary);"># 역할
+초록우산 어린이재단의 카카오톡 알림톡 메시지 카피라이터입니다.
+
+# 핵심 규칙
+1. 모든 문안은 반드시 아래 **3단계 구조**를 엄격히 준수하여 유지하세요:
+   - 1) 오프닝 (opening): 후원자 호칭("OOO 후원자님")으로 시작하되, 각 유형의 고유 콘셉트와 개성을 극대화하여 시작부터 서로 완전히 다른 스타일의 강렬하고 매력적인 첫 문장으로 작성하세요. 획일적이거나 뻔하고 평이한 안부 인사는 일절 배제하세요.
+   - 2) 실제 내용 및 제안 (content): 후원의 성과(수치, 통계 등 구체적 변화) 또는 안내하고자 하는 혜택/참여 일정을 신뢰성 있게 기술하세요.
+   - 3) 행동 촉구 (cta): 링크 접속, 참여 독려 등 구체적인 실천 행동을 자연스러운 문구로 유도하세요.
+
+2. 글자 수 조건:
+   - [단문 선택 시] 각 문안은 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 100자 이상, 140자 이하** (120자 내외)가 되도록 작성하세요.
+   - [장문 선택 시] 각 문안은 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 180자 이상, 220자 이하** (200자 내외)가 되도록 작성하세요.
+
+3. 초록우산의 따뜻하고 진정성 있는 톤을 유지하세요.
+4. 이모지를 자연스럽게 활용하되 과하지 않게 사용하세요.
+5. 각 문안은 서로 확실히 다른 스타일과 접근법을 사용하세요.
+6. 변수 보존 룰: 고객 호칭인 "OOO 후원자님"의 포맷을 반드시 살리세요.
+
+# 서비스 종류별 작성 지침 및 유형
+
+## [피드백 / 결과보고] — 2가지 유형
+- **유형 1: 정보제공중심형** (숫자/데이터/팩트 기반 톤앤매너)
+  - 오프닝 작성법: 후원자 호칭 뒤에 곧바로 핵심을 관통하는 통계 수치나 비율에 관한 질문을 던지며 주의 환기.
+  - 임의 수치 마스킹 규칙: 사용자가 제공하지 않은 새로운 수치적 정보를 지어낼 경우 반드시 '**XX**'(예: **XX명**, **XX%**)으로 표시하여 출력.
+- **유형 2: 감정터치중심형** (아동의 생생한 이야기/감정 스토리텔링)
+  - 오프닝 작성법: 안부 생략 후 수혜아동의 생생하고 순수한 한마디 인용구, 깊은 감성을 자극하는 편지 구절이나 아동의 모습 묘사로 뭉클하게 시작.
+
+## [혜택 / 참여활동] — 3가지 유형
+- **유형 1: 희소성강조형** (한정 수량, 조기 마감, 긴박감)
+  - 오프닝 작성법: 안부 없이 🚨 경고 이모지와 함께 즉시 마감 임박 상태나 희소성을 알리는 다급한 선언문으로 주의 집중.
+- **유형 2: 우대프라이빗형** (VIP 감사, 우선 혜택 존중)
+  - 오프닝 작성법: 오직 후원자님만을 위해 마련된 명예롭고 우대받는 혜택/초청임을 단아하고 정중한 첫 한마디로 전함.
+- **유형 3: 화제가치강조형** (트렌드, 콘텐츠 흥미, 호기심 자극)
+  - 오프닝 작성법: 문화계/SNS에서 폭발적으로 화제를 모으고 있는 작품/트렌드에 대한 트렌디하고 강렬한 호기심 유발형 질문.
+
+# 출력 형식
+- 피드백/결과보고: 순수한 JSON 배열 포맷으로 2가지 유형의 카피를 정확히 출력합니다.
+- 혜택/참여활동: 순수한 JSON 배열 포맷으로 3가지 유형의 카피를 정확히 출력합니다.</div>
+    </div>
+  `;
+  
+  overlay.classList.add('show');
+}
+
+function openEvalPromptModal() {
+  const overlay = document.getElementById('modalOverlay');
+  const title = document.getElementById('modalTitle');
+  const body = document.getElementById('modalBody');
+
+  title.textContent = 'ℹ️ 적용된 AI 평가/분석 프롬프트 명세';
+  
+  body.innerHTML = `
+    <div style="font-size:13.5px; line-height:1.7; color:var(--text-secondary);">
+      <p style="margin-bottom:12px; font-weight:600; color:var(--text-primary);">
+        초록우산 AI 메시지 평가기에는 아래와 같이 정밀 설계된 10대 지표 채점 루브릭 및 분석 시스템 프롬프트가 작동하고 있습니다.
+      </p>
+      
+      <div style="margin-bottom:16px; padding:12px; background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.12); border-radius:8px;">
+        <span style="color:var(--accent-purple); font-weight:700;">💡 핵심 평가 프롬프트 특징:</span>
+        <ul style="margin-top:6px; margin-left:20px; font-size:12.5px;">
+          <li><strong>10대 고객 여정 지표</strong>: 첫 줄 후킹, 비주얼 조화, 개인화 정밀성, 타이밍, 즉각적 유도 등 10개 영역을 정량/정성 평가합니다.</li>
+          <li><strong>과거 대조군 1:1 비교</strong>: 과거 우수작 및 유사 조건 캠페인 피처와의 격차를 인과적으로 비교 설명합니다.</li>
+          <li><strong>후광 효과 배제</strong>: 단순 사후 성과 수치가 높다고 해서 문면의 품질 점수를 왜곡하여 높게 평가하지 않도록 설계되었습니다.</li>
+          <li><strong>유형별 감점 조율</strong>: 피드백/결과보고 유형은 호객용 긴급성이 배제되었음을 감안하여 아동의 소식과 감동 깊이를 위주로 채점합니다.</li>
+        </ul>
+      </div>
+
+      <h4 style="margin-bottom:8px; color:var(--text-primary); font-size:14px; border-bottom:1px solid var(--border-glass); padding-bottom:6px;">📄 시스템 평가 프롬프트 전문 (가이드라인)</h4>
+      <div style="max-height:400px; overflow-y:auto; padding:16px; background:rgba(15,23,42,0.6); border-radius:8px; border:1px solid var(--border-glass); font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all; color:var(--text-secondary);"># 역할 및 분석 원칙
+당신은 10년 이상 경력의 CRM 마케팅 메시지 전문 전략 컨설턴트입니다. 초록우산의 알림톡과 메시지 성과를 극대화하는 분석을 수행합니다.
+
+## 핵심 분석 원칙
+1. **절대 일반론 금지**: "제목을 후킹하게 쓰세요" 같은 추상적 조언은 금지합니다. 실제 문구를 직접 인용하여 첨삭하세요.
+2. **원문 인용 필수**: 각 여정 단계 평가 시 메시지 본문에서 관련된 실제 표현을 따옴표("...")로 인용해 강점과 약점을 짚어내세요.
+3. **구체적 대안 제시**: 개선 권장 시 즉시 복사/발송 가능한 완성도 높은 대안 메시지 문구를 직접 작성해 주십시오.
+4. **고객 여정(User Journey) 중심**: 10가지 지표는 고객의 인지 및 수신 흐름에 유기적으로 연결됩니다.
+5. **성과 데이터 후광 효과 금지**: 사후 성과 데이터(오픈율 등)가 높다고 해서 객관적 문면 품질이나 지표 점수를 인위적으로 가산하지 마십시오.
+
+## 📋 10대 고객 여정 평가 항목 및 채점 기준
+- **01. 첫 줄 및 프리뷰 후킹력**: 프리뷰 30자 이내 평가. 상투적 인사("안녕하세요")는 3~5점 엄격 감점. 질문형/수치제시형은 8~10점.
+- **02. 비주얼 후킹 및 이모지 조화**: 이모지 도배(8개 이상) 시 3~4점 감점. 무미건조한 줄글 시 4~5점 감점. 황금 비율(100자당 1~2개)은 9~10점.
+- **03. 개인화 정밀성 & 밀도**: OOO 변수 등 개인화 요소 부재 시 1~4점 감점. 첫머리 및 본문 내 유기적 결합 시 8~10점.
+- **04. 오프닝 맥락 간결성**: 계절 안부 등 장황한 서두로 본론 지연 시 3~5점 감점. 두괄식 요약 시 8~10점.
+- **05. 요일/시간 타이밍 매칭**: 메시지 성격과 요일/시간 궁합 평가. 미입력 시 감점 없이 기본 6점.
+- **06. 긴급성 및 즉각적 유도**: 피드백 보고형은 긴급성 강요 없이 변화 결과 보고 중심으로 채점. 혜택형은 대상/시간 한정성으로 클릭 유도 여부 평가.
+- **07. 인지 명확성 및 가독 구조**: 한눈에 파악하기 쉬운 단문 위주 구성 및 단락 구분 여부.
+- **08. 혜택 가치 사전 노출도**: 클릭 전 알림톡 본문 자체에서 후원 보람, 성과 요약 등 가치를 선행 노출 시 8~10점.
+- **09. 문장 완결성 및 카피라이팅 퀄리티**: 주술 호응의 올바름, 스토리 유기성, 기계적 어투 탈피 여부.
+- **10. CTA 액션 문구 직관성**: "자세히 보기" 등 흔한 문구 시 4~6점. 보람과 행동이 결합된 직관적 버튼명 시 9~10점.
+
+## 📄 출력 형식
+1. **첫 번째 JSON 블록**: 10개 지표에 대한 1~10점 척도 정수 채점 결과
+2. **두 번째 JSON 블록**: 각 지표별 상세 평가 근거(reason)와 즉시 사용 가능한 완성도 높은 개선 문구(improvement)
+3. **상세 분석 리포트**: 도식화 기호(🎯, 🔎)를 활용한 성과 상관관계 및 대조군 비교 인과관계 서술</div>
+    </div>
+  `;
+  
+  overlay.classList.add('show');
+}
 
 async function deleteCampaign() {
   const idVal = document.getElementById('resultCampaignSelect').value;
@@ -1125,21 +1275,10 @@ function renderOverviewChart(filtered, groupBy) {
 
   // Render Chart.js Dual Y-axis
   ovChartInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: labels,
       datasets: [
-        {
-          label: '발송수 (건)',
-          data: sendCounts,
-          type: 'bar',
-          yAxisID: 'yVolume',
-          backgroundColor: 'rgba(148, 163, 184, 0.08)',
-          borderColor: 'rgba(148, 163, 184, 0.15)',
-          borderWidth: 1,
-          barThickness: groupBy === 'month' ? 40 : 20,
-          order: 4
-        },
         {
           label: '오픈율 (%)',
           data: openRates,
@@ -1170,7 +1309,7 @@ function renderOverviewChart(filtered, groupBy) {
           label: '종합 지수 (TPI)',
           data: tpiScores,
           type: 'line',
-          yAxisID: 'yPercentage',
+          yAxisID: 'yTpi',
           borderColor: '#8b5cf6',
           backgroundColor: 'rgba(139, 92, 246, 0.1)',
           borderWidth: 2,
@@ -1222,24 +1361,26 @@ function renderOverviewChart(filtered, groupBy) {
         yPercentage: {
           type: 'linear',
           position: 'left',
-          min: 0,
-          max: 100,
+          min: -10,
+          max: 25,
           grid: {
             color: 'rgba(255, 255, 255, 0.04)'
           },
           ticks: {
-            color: '#3b82f6',
+            color: '#94a3b8',
             callback: function(value) { return value + '%'; },
             font: { family: 'Spoqa Han Sans Neo', size: 10 }
           }
         },
-        yVolume: {
+        yTpi: {
           type: 'linear',
           position: 'right',
+          min: 0,
+          max: 100,
           grid: { display: false },
           ticks: {
-            color: '#94a3b8',
-            callback: function(value) { return value.toLocaleString() + '건'; },
+            color: '#8b5cf6',
+            callback: function(value) { return value + '점'; },
             font: { family: 'Spoqa Han Sans Neo', size: 10 }
           }
         }
@@ -1454,34 +1595,18 @@ function exportReport() {
 function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toastMsg').textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
 
 // ===== GEMINI AI (10 Items) =====
-// API Key: 사용자가 직접 입력 → localStorage에만 저장 (소스코드에 절대 포함하지 않음)
-const API_KEY_STORAGE = 'gemini_api_key_v4';
 
-function getApiKey() {
-  return localStorage.getItem(API_KEY_STORAGE) || '';
-}
-
-async function fetchGemini(model, contents, generationConfig = {}) {
-  const apiKey = getApiKey();
-  let url, body, headers;
-
-  if (apiKey) {
-    // 1. 로컬 API 키가 존재하는 경우: Google API로 직접 호출 (클라이언트 측)
-    url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    headers = { 'Content-Type': 'application/json' };
-    body = JSON.stringify({ contents, generationConfig });
-  } else {
-    // 2. 로컬 API 키가 비어있는 경우: Vercel serverless 프록시 호출 (CORS 지원)
-    const isVercelHost = window.location.hostname.includes('vercel.app');
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+async function fetchGemini(model, contents, generationConfig = {}, purpose = 'eval') {
+  // 100% Vercel serverless 프록시 호출 (CORS 지원 및 서버 측 이원화 API 키 처리)
+  const isVercelHost = window.location.hostname.includes('vercel.app');
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  const url = (isVercelHost || isLocalhost)
+    ? '/api/gemini-proxy'
+    : 'https://messageevalfin.vercel.app/api/gemini-proxy';
     
-    url = (isVercelHost || isLocalhost)
-      ? '/api/gemini-proxy'
-      : 'https://messageevalfin.vercel.app/api/gemini-proxy';
-      
-    headers = { 'Content-Type': 'application/json' };
-    body = JSON.stringify({ model, contents, generationConfig });
-  }
+  const headers = { 'Content-Type': 'application/json' };
+  const body = JSON.stringify({ model, contents, generationConfig, purpose });
 
   try {
     const res = await fetch(url, {
@@ -1742,7 +1867,7 @@ function buildAiPrompt() {
 2. **원문 인용 필수**: 각 여정 단계 평가 시 메시지 본문에서 관련된 실제 표현을 따옴표("...")로 인용하고 강점과 약점을 꼬집어내세요.
 3. **구체적 대안 제시**: 개선 권장 시 "~로 고치면 좋습니다"가 아닌, **실제 즉시 교체하여 발송 가능한 완성도 높은 대안 메시지 문구를 직접 작성**해 주어야 합니다.
 4. **고객 여정(User Journey) 중심**: 10가지 지표는 오픈/전환의 딱딱한 경계를 넘어 고객이 메시지를 수신하여 클릭하는 행동 흐름에 자연스럽게 녹아드는 단일한 여정 체계입니다.
-${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열된 과거 최고 성과/유사 조건 대조군 캠페인과 이번 캠페인의 피처 격차를 과학적으로 대조 설명하세요.\n' : ''}
+${pastCampaigns.length > 0 ? '5. **과거 피처 1:1 대조**: 아래에 나열된 과거 최고 성과/유사 조건 대조군 캠페인과 이번 캠페인의 피처 격차를 과학적으로 대조 설명하세요.\n' : ''}6. **성과 데이터 기반의 후광 효과(Halo Effect) 금지**: 제공되는 '실제 오픈율/전환율'은 사후적인 마케팅 결과 데이터일 뿐입니다. 실제 성과 수치가 높다고 해서 메시지 자체의 객관적인 언어적 품질이나 여정별 지표 점수를 인위적으로 가산하거나 높게 매기지 마십시오. 첫 문장이 상투적이라면 감점 규칙에 입각하여 가차 없이 감점 처리해야 합니다. 성과 데이터는 지표 점수를 왜곡하는 용도가 아닌, 리포트 후반부의 [상관관계 분석] 및 [1:1 다차원 성과 인과관계 분석] 영역에서 '지표 점수와 사후 성과 간의 인과적 격차 요인'을 논리적으로 추론/기술하기 위한 대조군으로만 순수하게 활용하십시오.
 
 ## 📋 이번 캠페인 정보
 `;
@@ -2097,7 +2222,7 @@ async function runAiEvaluation() {
   const btn = document.getElementById('aiRunBtn'); btn.disabled = true; btn.textContent = '⏳ 분석 중...';
   document.getElementById('aiLoadingContainer').style.display = 'block';
   document.getElementById('aiLoadingText').textContent = 'AI가 메시지를 분석하고 있습니다...';
-  const models = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  const models = ['gemini-2.5-flash'];
   try {
     const parts = [{ text: buildAiPrompt() }]; if (aiImageBase64) parts.push({ inline_data: { mime_type: aiImageMimeType, data: aiImageBase64 } });
     let text = null, usedModel = '';
@@ -2109,13 +2234,19 @@ async function runAiEvaluation() {
           temperature: 0.7,
           maxOutputTokens: 8192,
           thinkingConfig: {
-            thinkingBudget: 0
+            thinkingBudget: 2048
           }
-        });
+        }, 'eval');
+        let apiFinishReason = '';
         if (res.ok) { 
           const data = await res.json(); 
           text = data.candidates?.[0]?.content?.parts?.[0]?.text; 
-          if (text) { usedModel = model; break; } 
+          apiFinishReason = data.candidates?.[0]?.finishReason || '';
+          if (text) { 
+            usedModel = model; 
+            lastUsedCampaignIsTruncated = (apiFinishReason === 'MAX_TOKENS');
+            break; 
+          } 
         } else {
           const errData = await res.json().catch(() => ({}));
           console.warn(`${model} failed:`, errData.error || res.status);
@@ -2346,10 +2477,6 @@ function renderAiReportContent(rawText) {
     html = journeyHtml + html;
   }
 
-  if (isTruncated) {
-    html += `<div style="margin-top:24px;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-md);font-size:12px;color:var(--accent-rose);text-align:center;line-height:1.5;">💡 생성 용량 한계로 인해 AI 상세 리포트가 중간에 요약 또는 생략되었습니다. 상단의 상세 여정 카드 정보를 참고해 주세요.</div>`;
-  }
-
   return html;
 }
 
@@ -2358,7 +2485,6 @@ function renderAiScoreGrid() {
   document.getElementById('aiScoreGrid').innerHTML = aiEvalItems.map(item => {
     const s = aiScores[item.id] || 5;
     const color = s >= 8 ? 'var(--accent-emerald)' : s >= 5 ? 'var(--accent-amber)' : 'var(--accent-rose)';
-    const improvement = aiImprovements[item.id] || item.rec;
     return `<div class="ai-score-item" style="flex-direction:column;align-items:stretch;">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="score-num" style="color:${color}">${s}</div>
@@ -2366,7 +2492,6 @@ function renderAiScoreGrid() {
           <div class="score-bar"><div class="score-bar-fill" style="width:${s * 10}%;background:${color};"></div></div>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;padding-left:48px;line-height:1.5;">💡 ${improvement}</div>
     </div>`;
   }).join('') + `<div class="ai-score-item" style="border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.06);"><div class="score-num" style="font-size:28px;color:var(--accent-purple);">${aiPct}</div><div class="score-info"><div class="score-name" style="font-size:14px;font-weight:700;">종합 /100</div></div></div>`;
 }
@@ -2474,7 +2599,6 @@ function initGenServiceType() {
         <div class="gen-type-list">
           <span class="gen-type-tag info">📊 정보제공중심형</span>
           <span class="gen-type-tag emotion">💗 감정터치중심형</span>
-          <span class="gen-type-tag action">🎯 행동강조중심형</span>
         </div>`;
     } else {
       infoEl.innerHTML = `
@@ -2492,12 +2616,12 @@ function initGenServiceType() {
 
 function buildGeneratePrompt(serviceType, content, msgLength = 'long') {
   const lengthRule = msgLength === 'short'
-    ? `2. 각 문안은 오프닝, 실제 내용 및 제안, 행동 촉구의 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 140자 이상, 200자 이하**가 되도록 매우 간결하고 짜임새 있게 작성하세요. 140자 미만이거나 200자를 초과해서는 절대로 안 됩니다. 핵심 정보만 명확히 담으세요.`
-    : `2. 각 문안은 오프닝, 실제 내용 및 제안, 행동 촉구의 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 210자 이상, 400자 이하**가 되도록 풍부하고 상세하게 작성하세요. 210자 미만이거나 400자를 초과해서는 안 됩니다. 구체적인 성과와 따뜻한 감동 문구를 충분히 활용해 주세요.`;
+    ? `2. 각 문안은 오프닝, 실제 내용 및 제안, 행동 촉구의 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 100자 이상, 140자 이하** (120자 내외)가 되도록 매우 간결하고 짜임새 있게 작성하세요. 100자 미만이거나 140자를 초과해서는 절대로 안 됩니다. 핵심 정보만 명확히 담으세요. 반드시 120자 내외를 지키세요.`
+    : `2. 각 문안은 오프닝, 실제 내용 및 제안, 행동 촉구의 세 영역을 모두 합한 총 글자 수(공백 포함)가 **반드시 180자 이상, 220자 이하** (200자 내외)가 되도록 작성하세요. 180자 미만이거나 220자를 초과해서는 안 됩니다. 핵심 내용을 간결하면서도 따뜻하게 전달하세요. 반드시 200자 내외를 지키세요.`;
 
   const referenceNotice = msgLength === 'short'
-    ? `* 주의: 아래 '참고 예시'는 분량이 긴 편(장문)이자 구버전의 4단계 구조이므로, 단문 형태를 작성할 때는 예시의 '따뜻한 톤'만 참고하되 구조를 3단계로 합치고 분량을 대폭 축소하여 반드시 140자 이상, 200자 이하가 되도록 하세요.`
-    : `* 주의: 아래 '참고 예시'는 구버전의 4단계 구조입니다. 이를 오프닝에서 화제 제기가 자연스럽게 녹아들도록 부드럽게 변환하여 3단계 구조로 재구성하고, 구체적이고 풍성한 내용(210자 ~ 400자 범위 내)으로 작성해 주세요.`;
+    ? `* 주의: 아래 '참고 예시'는 분량이 긴 편(장문)이자 구버전의 4단계 구조이므로, 단문 형태를 작성할 때는 예시의 '따뜻한 톤'만 참고하되 구조를 3단계로 합치고 분량을 대폭 축소하여 반드시 100자 이상, 140자 이하(120자 내외)가 되도록 하세요.`
+    : `* 주의: 아래 '참고 예시'는 구버전의 4단계 구조입니다. 이를 오프닝에서 화제 제기가 자연스럽게 녹아들도록 부드럽게 변환하여 3단계 구조로 재구성하고, 180자 이상 220자 이하(200자 내외)로 작성해 주세요.`;
 
   const commonContext = `# 역할
 당신은 초록우산 어린이재단(www.chorogusan.or.kr)의 카카오톡 알림톡 메시지 카피라이터입니다.
@@ -2522,7 +2646,7 @@ ${referenceNotice}
 # 서비스 종류: 피드백/결과보고
 후원자님께 아이들이나 어려운 사람들을 지원한 결과를 보고하는 메시지입니다.
 
-# 3가지 유형 정의
+# 2가지 유형 정의 (정확히 2개만 생성하세요)
 
 ## 유형 1: 정보제공중심형
 - 핵심: 수치, 데이터, 통계를 중심으로 후원 결과를 객관적이고 신뢰감 있게 전달
@@ -2536,13 +2660,6 @@ ${referenceNotice}
 - 특징: 직접 인용("포기하지 않고 해냈어요"), 스토리텔링, 감정적 묘사
 - 톤: 따뜻하고 감성적이며 진심이 느껴지는
 - **유형별 오프닝 작성법**: 안부 멘트를 완전히 생략하고 **수혜아동의 생생하고 순수한 한마디 인용구, 깊은 감성을 자극하는 편지 구절이나 동화 같은 아동의 모습 묘사**로 아늑하고 뭉클하게 시작하세요. (예: "OOO 후원자님, '이제는 추운 겨울에도 내 방에서 발 뻗고 잘 수 있어요!'라며 수줍게 웃던 민우의 편지가 도착했습니다.")
-
-## 유형 3: 행동강조중심형  
-- 핵심: 후원의 실제 변화를 보여주고, 메시지 받는 사람(후원자)이 확인해야 하는 핵심 행동(결과 피드백 확인 등)을 주제에 알맞게 극대화하여 유도
-- 특징: 단순히 "아래 링크를 확인하세요" 같은 기계적인 유도 대신, 해당 메시지의 고유한 핵심 테마/주제와 연계하여 궁금증을 불러일으키고 적극적으로 반응하고 싶게 만드는 테마 밀착형 행동 촉구 문장(예: "매일매일 성장하고 있는 아이들의 이야기 확인해보시겠어요?", "기적이 시작된 그날의 감동을 지금 직접 만나보세요!" 등)을 반드시 활용
-- 톤: 적극적이고 행동 지향적이며 독자의 마음을 움직이는
-- **유형별 오프닝 작성법**: 질문이나 인사 대신 **후원자님의 기여로 만들어낸 기적적인 변화, 성취의 순간을 강렬하고 선언적인 문장**으로 선포하여 후원자의 효능감과 호기심을 극대화하며 시작하세요. (예: "OOO 후원자님, 후원자님의 크신 사랑이 마침내 절망뿐이던 한 아이의 세상을 완전히 바꾸어 놓았습니다!")
-- **매우 중요 행동강조 CTA 규칙**: 3) 행동 촉구(cta) 영역을 작성할 때, 평이하거나 기계적인 안내 문구를 전면 배제하고, 작성하는 피드백/결과보고의 고유 주제와 후원자가 취해야 할 확인 행동이 감동적으로 결합된 주제 특화형 CTA 문장으로 작성하세요.
 
 # 참고 예시 (피드백/결과보고 실제 발송 메시지)
 OOO 후원자님, 홀로서기를 시작한 청년들의 자립 성공률을 알고 계시나요?
@@ -2595,22 +2712,29 @@ OOO 후원자님, 서둘러주세요! 3월 특별 문화 혜택 예매가 곧 �
 `;
   }
 
-  const outputFormat = `
-# 출력 형식 (반드시 정확히 지켜주세요)
-
-API 응답 출력 형태가 application/json으로 강제되어 있으므로, 마크다운 코드 블록(예: \`\`\`json ... \`\`\`)을 절대로 사용하지 마시고 오직 순수한 JSON 배열 구조만 반환하세요.
-
-* 매우 중요: JSON 문법이 절대로 깨지지 않도록, 모든 문자열 값 내에서 대화나 직접 인용구를 표현할 때는 절대로 쌍따옴표(")를 중첩해서 사용하지 마시고 반드시 홑따옴표(')를 사용하세요.
-
-정확히 아래 스키마의 JSON 배열 구조로 3개의 문안을 출력하세요:
-
-[
+  const msgCount = serviceType === 'feedback' ? 2 : 3;
+  const outputSchemaItems = serviceType === 'feedback' ? `[
+  {
+    "typeName": "정보제공중심형",
+    "opening": "1) 오프닝 텍스트 (유형별 오프닝 작법에 맞춘 문장)",
+    "content": "2) 실제 내용 및 제안 텍스트 (성과 수치, 사업 팩트, 구체적 일정 등)",
+    "cta": "3) 행동 촉구 텍스트 (활동 참여, 링크 접속 유도 등)",
+    "description": "문안 생성 시 중점을 둔 핵심 사항에 대한 간략한 설명 (1~2문장)"
+  },
+  {
+    "typeName": "감정터치중심형",
+    "opening": "오프닝 텍스트",
+    "content": "실제 내용 및 제안 텍스트",
+    "cta": "행동 촉구 텍스트",
+    "description": "생성 시 중점을 둔 점 설명"
+  }
+]` : `[
   {
     "typeName": "유형 이름",
     "opening": "1) 오프닝 텍스트 (유형별 오프닝 작법에 맞춘 문장)",
     "content": "2) 실제 내용 및 제안 텍스트 (성과 수치, 사업 팩트, 구체적 일정 등)",
     "cta": "3) 행동 촉구 텍스트 (활동 참여, 링크 접속 유도 등)",
-    "description": "문안 생성 시 중점을 둔 핵심 사항(타겟 소구점, 카피라이팅 기법 등)에 대한 간략한 설명 (1~2문장)"
+    "description": "문안 생성 시 중점을 둔 핵심 사항에 대한 간략한 설명 (1~2문장)"
   },
   {
     "typeName": "유형 이름",
@@ -2626,14 +2750,25 @@ API 응답 출력 형태가 application/json으로 강제되어 있으므로, �
     "cta": "행동 촉구 텍스트",
     "description": "생성 시 중점을 둔 점 설명"
   }
-]
+]`;
+
+  const outputFormat = `
+# 출력 형식 (반드시 정확히 지켜주세요)
+
+API 응답 출력 형태가 application/json으로 강제되어 있으므로, 마크다운 코드 블록(예: \`\`\`json ... \`\`\`)을 절대로 사용하지 마시고 오직 순수한 JSON 배열 구조만 반환하세요.
+
+* 매우 중요: JSON 문법이 절대로 깨지지 않도록, 모든 문자열 값 내에서 대화나 직접 인용구를 표현할 때는 절대로 쌍따옴표(")를 중첩해서 사용하지 마시고 반드시 홑따옴표(')를 사용하세요.
+
+정확히 아래 스키마의 JSON 배열 구조로 ${msgCount}개의 문안을 출력하세요:
+
+${outputSchemaItems}
 
 # 사용자가 보내고자 하는 내용
 \`\`\`
 ${content}
 \`\`\`
 
-위 내용을 바탕으로 3가지 유형의 카카오톡 알림톡 문안을 생성하세요.
+위 내용을 바탕으로 ${msgCount}가지 유형의 카카오톡 알림톡 문안을 생성하세요.
 각 문안은 해당 유형의 특성을 극대화하되, 사용자가 제공한 핵심 내용은 반드시 포함하세요.
 `;
 
@@ -2695,7 +2830,7 @@ async function generateMessage() {
   const prompt = buildGeneratePrompt(serviceType, content, msgLength);
   
 
-  const models = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  const models = ['gemini-2.5-flash'];
 
   try {
     let text = null, usedModel = '';
@@ -2713,7 +2848,8 @@ async function generateMessage() {
             thinkingConfig: {
               thinkingBudget: 0
             }
-          }
+          },
+          'generate'
         );
         if (res.ok) {
           const data = await res.json();
@@ -2798,13 +2934,14 @@ async function generateMessage() {
     }
 
     if (!messages) throw new Error('AI 응답에서 문안을 파싱할 수 없습니다. 다시 시도해 주세요.');
-    if (!Array.isArray(messages) || messages.length < 3) throw new Error('3가지 문안이 모두 생성되지 않았습니다. 다시 시도해 주세요.');
+    const expectedCount = serviceType === 'feedback' ? 2 : 3;
+    if (!Array.isArray(messages) || messages.length < expectedCount) throw new Error(`${expectedCount}가지 문안이 모두 생성되지 않았습니다. 다시 시도해 주세요.`);
 
     generatedMessages = messages;
     document.getElementById('genLoading').style.display = 'none';
     document.getElementById('genResultBadge').textContent = `${usedModel} · ${new Date().toLocaleTimeString('ko-KR')}`;
     renderGenerateResults(messages, serviceType);
-    showToast('✨ 3가지 유형의 문안이 생성되었습니다!');
+    showToast(`✨ ${serviceType === 'feedback' ? '2' : '3'}가지 유형의 문안이 생성되었습니다!`);
 
   } catch (error) {
     document.getElementById('genLoading').style.display = 'none';
@@ -2824,8 +2961,7 @@ function renderGenerateResults(messages, serviceType) {
   const typeConfigs = {
     feedback: [
       { icon: '📊', tagClass: 'info', color: 'var(--accent-blue)' },
-      { icon: '💗', tagClass: 'emotion', color: 'var(--accent-rose)' },
-      { icon: '🎯', tagClass: 'action', color: 'var(--accent-amber)' }
+      { icon: '💗', tagClass: 'emotion', color: 'var(--accent-rose)' }
     ],
     benefit: [
       { icon: '🚨', tagClass: 'scarcity', color: 'var(--accent-rose)' },
@@ -2835,9 +2971,10 @@ function renderGenerateResults(messages, serviceType) {
   };
 
   const configs = typeConfigs[serviceType] || typeConfigs.feedback;
+  const sliceCount = serviceType === 'feedback' ? 2 : 3;
   const container = document.getElementById('genResultCards');
 
-  container.innerHTML = messages.slice(0, 3).map((msg, i) => {
+  container.innerHTML = messages.slice(0, sliceCount).map((msg, i) => {
     const cfg = configs[i] || configs[0];
     const fullText = [msg.opening, msg.content, msg.cta].filter(Boolean).join('\n\n');
     const charCount = fullText.length;
@@ -3253,7 +3390,8 @@ Object.assign(window, {
   handleImgGenUpload, removeImgGenImage,
   generateAlimtokImage, downloadAlimtokImage,
   refreshResultSelector, clearCampaignResult,
-  refreshOverview, changeOverviewPage, exportOverviewToCsv
+  refreshOverview, changeOverviewPage, exportOverviewToCsv,
+  openPromptModal, openEvalPromptModal
 });
 
 // ===== Start execution =====
