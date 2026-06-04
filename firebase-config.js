@@ -1,6 +1,6 @@
 // Firebase Configuration & Initialization
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCF3oh-FtpSOFjZchnjXpwf_AfUlxL1oTU",
@@ -14,4 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export { db, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy };
+export { db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy };
+
+
